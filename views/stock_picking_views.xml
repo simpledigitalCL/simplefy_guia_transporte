@@ -34,12 +34,13 @@
                                    readonly="l10n_cl_dte_status not in [False, 'cancelled']"/>
                             <label for="l10n_cl_vehicle_load_weight" string="Carga"
                                    invisible="not l10n_cl_fleet_vehicle_id"/>
-                            <div class="o_row" invisible="not l10n_cl_fleet_vehicle_id">
-                                <field name="l10n_cl_vehicle_load_weight" nolabel="1" class="oe_inline"
+                            <div class="d-flex align-items-baseline gap-1" invisible="not l10n_cl_fleet_vehicle_id">
+                                <field name="l10n_cl_vehicle_load_weight" nolabel="1" class="oe_inline w-auto"
+                                       digits="[16, 0]"
                                        decoration-danger="l10n_cl_vehicle_weight_capacity and l10n_cl_vehicle_load_weight &gt; l10n_cl_vehicle_weight_capacity"/>
                                 <span invisible="not l10n_cl_vehicle_weight_capacity">de</span>
-                                <field name="l10n_cl_vehicle_weight_capacity" nolabel="1" class="oe_inline"
-                                       invisible="not l10n_cl_vehicle_weight_capacity"/>
+                                <field name="l10n_cl_vehicle_weight_capacity" nolabel="1" class="oe_inline w-auto"
+                                       digits="[16, 0]" invisible="not l10n_cl_vehicle_weight_capacity"/>
                                 <span>kg asignados</span>
                             </div>
                             <field name="l10n_cl_edi_transport_id"
