@@ -8,6 +8,9 @@ from .rut import rut_es_valido
 # Estados de la guía en los que los datos de transporte ya no se cambian (como en Odoo).
 ESTADOS_ABIERTOS = (False, "cancelled")
 
+# Niveles de un problema de transporte (ver _l10n_cl_transport_problems).
+SIEMPRE, ESTRICTO, AVISO = "siempre", "estricto", "aviso"
+
 
 class StockPicking(models.Model):
     _inherit = "stock.picking"
@@ -166,54 +169,62 @@ class StockPicking(models.Model):
 
     def _l10n_cl_transport_problems(self):
         """Lo que falta o está mal para emitir la guía con los datos de la Res. 154, como pares
-        (frase dirigida a quien llena la entrega, bloquea la emisión)."""
+        (frase dirigida a quien llena la entrega, nivel): SIEMPRE bloquea la emisión (la guía
+        saldría con datos errados), ESTRICTO bloquea solo si la empresa lo pidió y AVISO nunca."""
         self.ensure_one()
         problemas = []
         destino = self.partner_id
         if destino and not (destino.street or destino.street2):
             problemas.append((
-                _("La dirección de entrega de %s no tiene calle.", destino.display_name), True))
+                _("La dirección de entrega de %s no tiene calle.", destino.display_name), ESTRICTO))
         if destino and not self._l10n_cl_get_comuna_recep():
             problemas.append((
-                _("La dirección de entrega de %s no tiene comuna.", destino.display_name), True))
+                _("La dirección de entrega de %s no tiene comuna.", destino.display_name), ESTRICTO))
 
         if self.l10n_cl_fleet_vehicle_id and not self.l10n_cl_edi_transport_id:
             problemas.append((_(
                 "El vehículo %s no tiene patente en la Flota.",
                 self.l10n_cl_fleet_vehicle_id.display_name,
-            ), True))
+            ), ESTRICTO))
         patente = self.l10n_cl_edi_transport_id.license_plate
         if patente and len(patente) > 8:
-            problemas.append((_("La patente %s tiene más de 8 caracteres.", patente), True))
+            problemas.append((_("La patente %s tiene más de 8 caracteres.", patente), SIEMPRE))
 
         transportista = self.l10n_cl_transport_partner_id
         propio = bool(transportista) and transportista == self.company_id.partner_id
         chofer = self.l10n_cl_edi_driver_id
         if (self.l10n_cl_fleet_vehicle_id or propio) and not chofer:
-            problemas.append((_("Indique el chofer del vehículo."), True))
+            problemas.append((_("Indique el chofer del vehículo."), ESTRICTO))
         if chofer and not chofer.vat:
-            problemas.append((_("Ingrese el RUT del chofer %s.", chofer.name), True))
+            problemas.append((_("Ingrese el RUT del chofer %s.", chofer.name), ESTRICTO))
         elif chofer and not rut_es_valido(chofer.vat):
             problemas.append((_(
                 "El RUT del chofer %(chofer)s (%(rut)s) no es válido.",
                 chofer=chofer.name, rut=chofer.vat,
-            ), True))
+            ), SIEMPRE))
 
         if transportista and not transportista.vat:
             problemas.append((
-                _("Ingrese el RUT del transportista %s.", transportista.display_name), True))
+                _("Ingrese el RUT del transportista %s.", transportista.display_name), ESTRICTO))
         elif transportista and not rut_es_valido(transportista.vat):
             problemas.append((_(
                 "El RUT del transportista %(nombre)s (%(rut)s) no es válido.",
                 nombre=transportista.display_name, rut=transportista.vat,
-            ), True))
+            ), SIEMPRE))
         if not (self.l10n_cl_edi_transport_id or transportista):
             # La guía sale con «Sin Dato», que la norma admite cuando no se conoce el vehículo
             # (un tercero, el cliente que retira): se avisa, no se bloquea.
             problemas.append((_(
                 "No se indicó el vehículo ni el transportista: la guía saldrá con «Sin Dato»."
-            ), False))
+            ), AVISO))
         return problemas
+
+    def _l10n_cl_transport_blockers(self):
+        """Los problemas que impiden emitir la guía, según lo que pidió la empresa."""
+        self.ensure_one()
+        estricto = self.company_id.l10n_cl_transport_check == "block"
+        return [texto for texto, nivel in self._l10n_cl_transport_problems()
+                if nivel == SIEMPRE or (nivel == ESTRICTO and estricto)]
 
     @api.depends(
         "state", "country_code", "picking_type_code", "l10n_cl_dte_status",
@@ -268,7 +279,7 @@ class StockPicking(models.Model):
         """Antes de crear la guía: revisa los datos de transporte y completa las fechas."""
         errores = []
         for picking in self.filtered(lambda p: p._l10n_cl_needs_transport()):
-            bloqueos = [texto for texto, bloquea in picking._l10n_cl_transport_problems() if bloquea]
+            bloqueos = picking._l10n_cl_transport_blockers()
             if bloqueos:
                 errores.append("%s\n%s" % (picking.name, "\n".join("• %s" % p for p in bloqueos)))
                 continue

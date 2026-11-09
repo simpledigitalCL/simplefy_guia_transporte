@@ -24,8 +24,10 @@ patente, transportista, chofer y fechas de salida y llegada.
   encabezado, y no en la última pestaña. El RUT del chofer y del transportista se corrigen ahí
   mismo.
 - **Revisión antes de emitir.** Al crear la guía se revisan el RUT del chofer y del
-  transportista, el chofer de un vehículo propio y la dirección y comuna de destino. Las fechas
-  de salida y llegada, si están vacías, se completan con la fecha y hora de emisión.
+  transportista, el chofer de un vehículo propio y la dirección y comuna de destino. Un RUT
+  mal escrito siempre bloquea; lo que falta bloquea o solo se avisa, según se elija en los
+  ajustes de Inventario. Las fechas de salida y llegada, si están vacías, se completan con la
+  fecha y hora de emisión.
 - **Guía impresa en español**, con los datos de transporte del documento tributario.
 - **Desde campos personalizados.** Si la empresa ya registraba el vehículo, los acompañantes o
   los pesos en campos propios (Studio), un asistente en Flota › Configuración propone a qué campo
@@ -51,6 +53,7 @@ Desarrollado por **Simplefy by Simpledigital**. https://simpledigital.cl
         "views/fleet_vehicle_views.xml",
         "views/stock_picking_views.xml",
         "views/delivery_carrier_views.xml",
+        "views/res_config_settings_views.xml",
         "report/guia_despacho_templates.xml",
         "wizards/migracion_campos_views.xml",
     ],

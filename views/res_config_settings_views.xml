@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_guia_transporte" model="ir.ui.view">
+        <field name="name">res.config.settings.form.guia.transporte</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="stock.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//setting[@id='stock_fleet']" position="after">
+                <setting id="l10n_cl_transport_check" company_dependent="1"
+                         string="Guía de despacho: datos de transporte"
+                         help="Qué hacer al emitir una guía a la que le faltan datos de transporte de la Res. 154.">
+                    <field name="l10n_cl_transport_check" widget="radio"/>
+                    <div class="text-muted small mt-1">
+                        Un RUT con dígito verificador malo o una patente de más de 8 caracteres
+                        siempre bloquean la emisión.
+                    </div>
+                </setting>
+            </xpath>
+        </field>
+    </record>
+</odoo>
