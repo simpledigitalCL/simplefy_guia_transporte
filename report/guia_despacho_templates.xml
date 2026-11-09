@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        XML de la guía: el RUT del transportista sale del transportista de la entrega, que puede
+        venir del vehículo de la Flota o del courier del método de envío. Odoo lo tomaba solo del
+        vehículo.
+    -->
+    <template id="dte_subtemplate_transportista" inherit_id="l10n_cl_edi_stock_reform.dte_subtemplate">
+        <xpath expr="//RUTTrans" position="replace">
+            <RUTTrans t-out="format_vat(picking.l10n_cl_transport_partner_id.vat)"/>
+        </xpath>
+    </template>
+
+    <!-- Guía impresa: el bloque de transporte de la Res. 154, en español. -->
+    <template id="stock_informations_transporte" inherit_id="l10n_cl_edi_stock_reform.stock_informations">
+        <xpath expr="//div[@id='reform_info']" position="replace">
+            <div id="reform_info" class="mb-3">
+                <t t-set="sin_dato">Sin dato</t>
+                <div class="row mt-2">
+                    <div class="col-3">
+                        <strong>Salida:</strong><br/>
+                        <span t-if="o.l10n_cl_edi_departure_date"
+                              t-out="o._l10n_cl_edi_get_departure_datetime().strftime('%d-%m-%Y %H:%M')"/>
+                        <span t-else="" t-out="sin_dato"/>
+                    </div>
+                    <div class="col-3">
+                        <strong>Llegada:</strong><br/>
+                        <span t-if="o.l10n_cl_edi_arrival_date"
+                              t-out="o.l10n_cl_edi_arrival_date.strftime('%d-%m-%Y')"/>
+                        <span t-else="" t-out="sin_dato"/>
+                    </div>
+                    <div class="col-3">
+                        <strong>Motivo del traslado:</strong><br/>
+                        <span t-field="o.l10n_cl_delivery_guide_reason"/>
+                    </div>
+                    <div class="col-3">
+                        <strong>Transportista:</strong><br/>
+                        <span t-out="o.l10n_cl_transport_partner_id.name or sin_dato"/>
+                        <t t-if="o.l10n_cl_transport_partner_id.vat">
+                            <br/>RUT <span t-out="o._l10n_cl_format_vat(o.l10n_cl_transport_partner_id.vat)"/>
+                        </t>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-3">
+                        <strong>Patente:</strong><br/>
+                        <span t-out="o.l10n_cl_edi_transport_id.license_plate or sin_dato"/>
+                    </div>
+                    <div class="col-3">
+                        <strong>Patente del carro:</strong><br/>
+                        <span t-out="o.l10n_cl_edi_transport_id.trailer_license_plate or sin_dato"/>
+                    </div>
+                    <div class="col-3">
+                        <strong>Chofer:</strong><br/>
+                        <span t-out="o.l10n_cl_edi_driver_id.name or sin_dato"/>
+                    </div>
+                    <div class="col-3">
+                        <strong>RUT chofer:</strong><br/>
+                        <span t-out="o.l10n_cl_edi_driver_id.vat and o._l10n_cl_format_vat(o.l10n_cl_edi_driver_id.vat) or sin_dato"/>
+                    </div>
+                </div>
+            </div>
+        </xpath>
+    </template>
+</odoo>

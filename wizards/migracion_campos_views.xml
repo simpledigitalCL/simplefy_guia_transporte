@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="l10n_cl_transport_field_migration_view_form" model="ir.ui.view">
+        <field name="name">l10n_cl.transport.field.migration.form</field>
+        <field name="model">l10n_cl.transport.field.migration</field>
+        <field name="arch" type="xml">
+            <form string="Traer datos de campos personalizados">
+                <field name="state" invisible="1"/>
+                <div invisible="state != 'draft'">
+                    <p>
+                        Si la empresa ya registraba el vehículo, los acompañantes o los pesos en
+                        campos personalizados (por ejemplo, hechos con Studio), aquí se pasan a los
+                        campos de la guía de despacho. Revise la propuesta: en cada fila se indica
+                        el campo personalizado que corresponde, o se deja vacía.
+                    </p>
+                    <field name="line_ids" nolabel="1">
+                        <list editable="bottom" create="false" delete="false">
+                            <field name="model" column_invisible="1"/>
+                            <field name="target_type" column_invisible="1"/>
+                            <field name="target_relation" column_invisible="1"/>
+                            <field name="model_label"/>
+                            <field name="target_label"/>
+                            <field name="source_field_id" options="{'no_create': True, 'no_open': True}"
+                                   placeholder="Ninguno"/>
+                        </list>
+                    </field>
+                    <group>
+                        <group>
+                            <field name="copy_data"/>
+                            <field name="update_views"/>
+                            <field name="remove_guide_lines" invisible="not update_views"/>
+                        </group>
+                        <group>
+                            <field name="archive_automations"/>
+                            <field name="delete_fields"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-warning" role="alert" invisible="not delete_fields">
+                        Los campos personalizados se eliminan con sus datos y no se pueden recuperar.
+                        Conviene migrar primero sin eliminarlos, revisar el resultado y eliminarlos
+                        después.
+                    </div>
+                </div>
+                <div invisible="state != 'done'">
+                    <field name="result" nolabel="1"/>
+                </div>
+                <div class="text-muted small text-center mt-3">
+                    Guía de Despacho: Transporte · by
+                    <a href="https://simpledigital.cl" target="_blank" rel="noopener noreferrer">Simpledigital</a>
+                </div>
+                <footer>
+                    <button name="action_migrar" type="object" string="Migrar" class="btn-primary"
+                            invisible="state != 'draft'" data-hotkey="q"/>
+                    <button string="Cancelar" special="cancel" invisible="state != 'draft'" data-hotkey="x"/>
+                    <button string="Cerrar" special="cancel" invisible="state != 'done'" class="btn-primary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_l10n_cl_transport_field_migration" model="ir.actions.act_window">
+        <field name="name">Traer datos de campos personalizados</field>
+        <field name="res_model">l10n_cl.transport.field.migration</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_l10n_cl_transport_field_migration"
+              name="Traer datos de campos personalizados"
+              parent="fleet.fleet_configuration"
+              action="action_l10n_cl_transport_field_migration"
+              groups="base.group_system"
+              sequence="91"/>
+</odoo>

@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_l10n_cl_edi_vehicle_stock_user_transporte,Transporte para la guía (usuario de Inventario),l10n_cl_edi_stock_reform.model_l10n_cl_edi_vehicle,stock.group_stock_user,1,1,1,0
+access_l10n_cl_transport_field_migration,Migración de campos de transporte,model_l10n_cl_transport_field_migration,base.group_system,1,1,1,1
+access_l10n_cl_transport_field_migration_line,Migración de campos de transporte (línea),model_l10n_cl_transport_field_migration_line,base.group_system,1,1,1,1

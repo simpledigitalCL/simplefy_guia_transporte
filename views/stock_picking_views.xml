@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Los datos de transporte de la Res. 154 juntos, bajo el encabezado de la entrega.
+
+        Odoo los repartía entre el encabezado (salida y llegada) y la última pestaña (transporte y
+        chofer). Se sacan de ahí y se presentan en una sola sección, fuera de los grupos del
+        encabezado: así las personalizaciones de Studio que apuntan a un campo por su posición en
+        el grupo (/group[2]/field[10]) siguen apuntando al mismo campo que antes de instalar la
+        Res. 154.
+    -->
+    <record id="view_picking_form_guia_transporte" model="ir.ui.view">
+        <field name="name">stock.picking.form.guia.transporte</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="l10n_cl_edi_stock_reform.view_picking_edi_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='l10n_cl_edi_departure_date']" position="replace"/>
+            <xpath expr="//field[@name='l10n_cl_edi_arrival_date']" position="replace"/>
+            <xpath expr="//page[@name='electronic_invoice']//field[@name='l10n_cl_edi_transport_id']" position="replace"/>
+            <xpath expr="//page[@name='electronic_invoice']//field[@name='l10n_cl_edi_driver_id']" position="replace"/>
+
+            <xpath expr="//field[@name='picking_properties']" position="before">
+                <div name="l10n_cl_transporte" class="mt-2 mb-3"
+                     invisible="country_code != 'CL' or picking_type_code != 'outgoing'">
+                    <separator string="Transporte para la guía de despacho"/>
+                    <div class="alert alert-warning mb-2" role="alert" invisible="not l10n_cl_transport_issues">
+                        <field name="l10n_cl_transport_issues" nolabel="1" readonly="1"/>
+                    </div>
+                    <group name="l10n_cl_transporte_datos" class="mt-0">
+                        <group name="l10n_cl_transporte_vehiculo">
+                            <field name="l10n_cl_fleet_vehicle_id"
+                                   options="{'no_create': True}"
+                                   placeholder="Vehículo de la Flota"
+                                   readonly="l10n_cl_dte_status not in [False, 'cancelled']"/>
+                            <label for="l10n_cl_vehicle_load_weight" string="Carga"
+                                   invisible="not l10n_cl_fleet_vehicle_id"/>
+                            <div class="o_row" invisible="not l10n_cl_fleet_vehicle_id">
+                                <field name="l10n_cl_vehicle_load_weight" nolabel="1" class="oe_inline"
+                                       decoration-danger="l10n_cl_vehicle_weight_capacity and l10n_cl_vehicle_load_weight &gt; l10n_cl_vehicle_weight_capacity"/>
+                                <span invisible="not l10n_cl_vehicle_weight_capacity">de</span>
+                                <field name="l10n_cl_vehicle_weight_capacity" nolabel="1" class="oe_inline"
+                                       invisible="not l10n_cl_vehicle_weight_capacity"/>
+                                <span>kg asignados</span>
+                            </div>
+                            <field name="l10n_cl_edi_transport_id"
+                                   placeholder="Se completa con el vehículo"
+                                   context="{'default_company_id': company_id}"
+                                   readonly="l10n_cl_dte_status not in [False, 'cancelled']"/>
+                            <field name="l10n_cl_trailer_license_plate"
+                                   invisible="not l10n_cl_trailer_license_plate"/>
+                            <field name="l10n_cl_transport_partner_id"
+                                   placeholder="Empresa que hace el traslado"
+                                   readonly="l10n_cl_dte_status not in [False, 'cancelled']"/>
+                            <field name="l10n_cl_transport_vat"
+                                   placeholder="76.086.428-5"
+                                   invisible="not l10n_cl_transport_partner_id"
+                                   readonly="l10n_cl_dte_status not in [False, 'cancelled']"/>
+                        </group>
+                        <group name="l10n_cl_transporte_chofer">
+                            <field name="l10n_cl_edi_driver_id"
+                                   placeholder="Chofer designado en la Flota"
+                                   readonly="l10n_cl_dte_status not in [False, 'cancelled']"/>
+                            <field name="l10n_cl_driver_vat"
+                                   placeholder="12.345.678-5"
+                                   invisible="not l10n_cl_edi_driver_id"
+                                   readonly="l10n_cl_dte_status not in [False, 'cancelled']"/>
+                            <field name="l10n_cl_crew_employee_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"
+                                   placeholder="Peonetas"/>
+                            <field name="l10n_cl_edi_departure_date"
+                                   placeholder="Al emitir la guía"
+                                   readonly="l10n_cl_dte_status not in [False, 'cancelled']"/>
+                            <field name="l10n_cl_edi_arrival_date"
+                                   placeholder="El día de la salida"
+                                   readonly="l10n_cl_dte_status not in [False, 'cancelled']"/>
+                        </group>
+                    </group>
+                    <div class="text-muted small text-end">
+                        Guía de Despacho: Transporte · by
+                        <a href="https://simpledigital.cl" target="_blank" rel="noopener noreferrer">Simpledigital</a>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

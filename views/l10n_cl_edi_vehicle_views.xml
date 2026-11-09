@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="l10n_cl_edi_vehicle_view_form_flota" model="ir.ui.view">
+        <field name="name">l10n_cl_edi.vehicle.form.flota</field>
+        <field name="model">l10n_cl_edi.vehicle</field>
+        <field name="inherit_id" ref="l10n_cl_edi_stock_reform.l10n_cl_edi_vehicle_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="attributes">
+                <attribute name="string">Transporte para la guía de despacho</attribute>
+            </xpath>
+            <xpath expr="//widget[@name='web_ribbon']" position="attributes">
+                <attribute name="title">Archivado</attribute>
+            </xpath>
+            <xpath expr="//field[@name='license_plate']" position="before">
+                <field name="fleet_vehicle_id" options="{'no_create': True}"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <div class="text-muted small text-center mt-4">
+                    Guía de Despacho: Transporte · by
+                    <a href="https://simpledigital.cl" target="_blank" rel="noopener noreferrer">Simpledigital</a>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="l10n_cl_edi_vehicle_view_list_flota" model="ir.ui.view">
+        <field name="name">l10n_cl_edi.vehicle.list.flota</field>
+        <field name="model">l10n_cl_edi.vehicle</field>
+        <field name="inherit_id" ref="l10n_cl_edi_stock_reform.l10n_cl_edi_vehicle_view_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="attributes">
+                <attribute name="string">Transportes para la guía de despacho</attribute>
+            </xpath>
+            <xpath expr="//list" position="inside">
+                <header>
+                    <button name="action_l10n_cl_sync_fleet" type="object" string="Traer desde la Flota"
+                            display="always" class="btn-secondary"/>
+                </header>
+            </xpath>
+            <xpath expr="//field[@name='name']" position="before">
+                <field name="license_plate" position="move"/>
+            </xpath>
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="fleet_vehicle_id" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="l10n_cl_edi_vehicle_view_search_flota" model="ir.ui.view">
+        <field name="name">l10n_cl_edi.vehicle.search.flota</field>
+        <field name="model">l10n_cl_edi.vehicle</field>
+        <field name="inherit_id" ref="l10n_cl_edi_stock_reform.l10n_cl_edi_vehicle_view_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='inactive']" position="attributes">
+                <attribute name="string">Archivados</attribute>
+            </xpath>
+            <xpath expr="//filter[@name='inactive']" position="before">
+                <filter string="De la Flota" name="de_la_flota" domain="[('fleet_vehicle_id', '!=', False)]"/>
+                <filter string="De terceros" name="de_terceros" domain="[('fleet_vehicle_id', '=', False)]"/>
+                <separator/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="l10n_cl_edi_stock_reform.action_stock_l10n_cl_transport" model="ir.actions.act_window">
+        <field name="name">Transportes para la guía de despacho</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Registre los vehículos que trasladan mercadería</p>
+            <p>Los vehículos de la Flota con patente aparecen aquí solos. Agregue a mano los de
+               terceros que conozca, con su patente y su transportista.</p>
+        </field>
+    </record>
+
+    <record id="l10n_cl_edi_stock_reform.menu_stock_l10n_cl_transport" model="ir.ui.menu">
+        <field name="name">Transportes (guía de despacho)</field>
+    </record>
+
+    <menuitem id="menu_fleet_l10n_cl_transport"
+              name="Transportes (guía de despacho)"
+              parent="fleet.fleet_configuration"
+              action="l10n_cl_edi_stock_reform.action_stock_l10n_cl_transport"
+              sequence="90"/>
+</odoo>
