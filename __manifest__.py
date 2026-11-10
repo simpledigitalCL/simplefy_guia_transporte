@@ -1,6 +1,6 @@
 {
     "name": "Guía de Despacho: Transporte (Res. 154)",
-    "version": "18.0.2.0.1",
+    "version": "18.0.2.1.0",
     "category": "Accounting/Localizations/EDI",
     "summary": "Transporte de la guía de despacho electrónica: flota propia o transporte externo, "
                "chofer, patente y transportista, revisados antes de emitir.",
@@ -28,6 +28,11 @@ despacho los datos del traslado: patente, transportista, chofer y fechas de sali
 - **Revisión antes de emitir.** Un RUT mal escrito o una patente de más de 8 caracteres siempre
   bloquean la emisión; los datos faltantes la bloquean o solo se informan, según lo configurado
   en Inventario › Ajustes. Las fechas de salida y llegada vacías se completan al emitir.
+- **Descuentos que cuadran.** El SII rechaza una guía con líneas de precio negativo. Los
+  descuentos de la venta van en la guía como descuento global, con el mismo monto de la orden
+  de venta (o en proporción, si se despacha una parte), y los totales cuadran con la venta.
+- **Receptor correcto.** La razón social y el RUT del destinatario son los de la empresa, aunque
+  la entrega vaya a una dirección de despacho sin nombre.
 - **Guía impresa corporativa.** Los datos de transporte en un recuadro compacto, con los títulos
   en el color principal de la empresa y los datos en negro.
 - **Lotes de entregas y Flota.** El vehículo de una operación pasa a su lote y viceversa. Cada
@@ -45,6 +50,7 @@ Desarrollado por **Simplefy by Simpledigital**. https://simpledigital.cl
         "l10n_cl_edi_stock_reform",
         "fleet",
         "hr",
+        "sale_stock",
         "stock_delivery",
         "stock_fleet",
     ],

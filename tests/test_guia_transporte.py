@@ -28,6 +28,7 @@ class TestGuiaTransporte(TransactionCase):
         })
         cls.cliente = cls.env["res.partner"].create({
             "name": "Cliente Destino", "street": "Av. Siempre Viva 742", "city": "Rancagua",
+            "vat": "96919050-8", "is_company": True,
         })
         cls.tipo_salida = cls.env["stock.picking.type"].search(
             [("code", "=", "outgoing"), ("company_id", "=", cls.empresa.id)], limit=1)
@@ -266,3 +267,137 @@ class TestGuiaTransporte(TransactionCase):
         self.assertEqual(propia.l10n_cl_fleet_vehicle_id, self.camion)
         self.assertEqual(propia.l10n_cl_license_plate, "TSRV15")
         self.assertFalse(externa.l10n_cl_fleet_vehicle_id)
+
+
+@tagged("post_install", "-at_install")
+class TestGuiaDescuentos(TransactionCase):
+    """El SII rechaza una guía con líneas de precio negativo («RSC Error en Schema»). Los
+    descuentos de la venta van como descuento global y los montos cuadran con la orden."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.empresa = cls.env.company
+        chile = cls.env.ref("base.cl")
+        cls.empresa.write({"country_id": chile.id, "account_fiscal_country_id": chile.id})
+        grupo = cls.env["account.tax.group"].create({
+            "name": "IVA (prueba)", "company_id": cls.empresa.id, "country_id": chile.id})
+        vals_iva = {"name": "IVA 19% (prueba)", "amount": 19.0, "amount_type": "percent",
+                    "type_tax_use": "sale", "company_id": cls.empresa.id, "tax_group_id": grupo.id,
+                    "country_id": chile.id}
+        if "l10n_cl_sii_code" in cls.env["account.tax"]._fields:
+            vals_iva["l10n_cl_sii_code"] = 14
+        cls.iva = cls.env["account.tax"].create(vals_iva)
+        cls.cliente = cls.env["res.partner"].create({
+            "name": "Comercializadora Andrea Nilo EIRL", "vat": "96919050-8", "is_company": True,
+            "street": "Av. Siempre Viva 742", "city": "Rancagua",
+            "l10n_cl_delivery_guide_price": "sale_order",
+        })
+        # Dirección de despacho sin nombre, como las que el SII rechazaba por razón social vacía.
+        cls.despacho = cls.env["res.partner"].create({
+            "type": "delivery", "parent_id": cls.cliente.id, "street": "Camino 123", "city": "Renca",
+            "l10n_cl_delivery_guide_price": "sale_order",
+        })
+        cls.saco = cls.env["product.product"].create({
+            "name": "Saco 15 kg", "type": "consu", "list_price": 10000, "taxes_id": [(6, 0, cls.iva.ids)]})
+        cls.descuento_servicio = cls.env["product.product"].create({
+            "name": "Descuentos Pesos", "type": "service", "invoice_policy": "order",
+            "taxes_id": [(6, 0, cls.iva.ids)]})
+        cls.descuento_bien = cls.env["product.product"].create({
+            "name": "Descuentos Pesos (bien)", "type": "consu", "invoice_policy": "order",
+            "taxes_id": [(6, 0, cls.iva.ids)]})
+
+    def _venta(self, producto_descuento, destino=None):
+        venta = self.env["sale.order"].create({
+            "partner_id": self.cliente.id,
+            "partner_shipping_id": (destino or self.cliente).id,
+            "order_line": [
+                (0, 0, {"product_id": self.saco.id, "product_uom_qty": 3, "price_unit": 10000,
+                        "tax_id": [(6, 0, self.iva.ids)]}),
+                (0, 0, {"product_id": producto_descuento.id, "product_uom_qty": 1, "price_unit": -3000,
+                        "tax_id": [(6, 0, self.iva.ids)]}),
+            ],
+        })
+        venta.action_confirm()
+        return venta
+
+    def _despachar(self, venta, cantidad=None):
+        entrega = venta.picking_ids
+        for move in entrega.move_ids:
+            move.quantity = cantidad if (cantidad and move.product_id == self.saco) else move.product_uom_qty
+            move.picked = True
+        accion = entrega.button_validate()
+        if isinstance(accion, dict) and accion.get("res_model") == "stock.backorder.confirmation":
+            Form(self.env["stock.backorder.confirmation"].with_context(accion["context"])).save().process()
+        return entrega
+
+    def test_descuento_servicio_cuadra_con_la_venta(self):
+        venta = self._venta(self.descuento_servicio)
+        entrega = self._despachar(venta)
+        totales, _r, lineas = entrega._l10n_cl_get_tax_amounts()
+        self.assertEqual(totales["subtotal_amount_taxable"], venta.amount_untaxed)  # 27.000
+        self.assertEqual(totales["total_amount"], venta.amount_total)  # 32.130
+        self.assertEqual(totales["l10n_cl_global_discounts"][0]["amount"], 3000)
+        self.assertEqual(totales["l10n_cl_global_discounts"][0]["glosa"], "Descuentos Pesos")
+        self.assertFalse(any(v["total_amount"] < 0 for v in lineas.values()))
+
+    def test_descuento_como_bien_no_va_como_item(self):
+        """El caso de hoy: el producto de descuento es un bien y llega a la bodega."""
+        venta = self._venta(self.descuento_bien)
+        entrega = self._despachar(venta)
+        self.assertEqual(len(entrega.move_ids), 2, "el descuento tiene movimiento de bodega")
+        self.assertEqual(entrega._l10n_cl_dte_moves().product_id, self.saco)
+        totales, _r, lineas = entrega._l10n_cl_get_tax_amounts()
+        self.assertEqual(totales["subtotal_amount_taxable"], venta.amount_untaxed)
+        self.assertEqual(totales["total_amount"], venta.amount_total)
+        self.assertEqual(totales["l10n_cl_global_discounts"][0]["amount"], 3000)
+        self.assertEqual(list(lineas), list(entrega._l10n_cl_dte_moves()))
+
+    def test_despacho_parcial_descuento_proporcional(self):
+        venta = self._venta(self.descuento_servicio)
+        entrega = self._despachar(venta, cantidad=1)
+        totales, _r, _l = entrega._l10n_cl_get_tax_amounts()
+        self.assertEqual(totales["l10n_cl_global_discounts"][0]["amount"], 1000)
+        self.assertEqual(totales["subtotal_amount_taxable"], 9000)
+        self.assertEqual(totales["vat_amount"], 1710)
+        self.assertEqual(totales["total_amount"], 10710)
+
+    def test_sin_descuento_no_cambia_nada(self):
+        venta = self.env["sale.order"].create({
+            "partner_id": self.cliente.id,
+            "order_line": [(0, 0, {"product_id": self.saco.id, "product_uom_qty": 2, "price_unit": 10000,
+                                   "tax_id": [(6, 0, self.iva.ids)]})],
+        })
+        venta.action_confirm()
+        totales, _r, _l = self._despachar(venta)._l10n_cl_get_tax_amounts()
+        self.assertNotIn("l10n_cl_global_discounts", totales)
+        self.assertEqual(totales["total_amount"], venta.amount_total)
+
+    def test_receptor_es_la_empresa(self):
+        venta = self._venta(self.descuento_servicio, destino=self.despacho)
+        entrega = self._despachar(venta)
+        self.assertEqual(entrega.partner_id, self.despacho)
+        self.assertFalse(any("RUT" in t for t, _n in entrega._l10n_cl_transport_problems()))
+        if not hasattr(entrega, "_l10n_cl_render_dte"):
+            self.skipTest("Solo con la réplica de laboratorio de l10n_cl_edi_stock.")
+        entrega.l10n_latam_document_number = "000123"
+        xml = entrega._l10n_cl_render_dte()
+        self.assertIn("<RznSocRecep>Comercializadora Andrea Nilo EIRL</RznSocRecep>", xml)
+        self.assertIn("<RUTRecep>96919050-8</RUTRecep>", xml)
+        self.assertIn("<ValorDR>3000</ValorDR>", xml)
+        self.assertIn("<MntNeto>27000</MntNeto>", xml)
+        self.assertIn("<MntTotal>32130</MntTotal>", xml)
+        self.assertNotIn("<MontoItem>-", xml)
+        self.assertLess(xml.index("</Detalle>"), xml.index("<DscRcgGlobal>"))
+
+    def test_sin_comuna_siempre_bloquea(self):
+        sin_comuna = self.env["res.partner"].create({
+            "name": "Sin Comuna SpA", "vat": "77806647-5", "street": "Callao 3037"})
+        tipo = self.env["stock.picking.type"].search(
+            [("code", "=", "outgoing"), ("company_id", "=", self.empresa.id)], limit=1)
+        entrega = self.env["stock.picking"].create({
+            "picking_type_id": tipo.id, "partner_id": sin_comuna.id,
+            "location_id": tipo.default_location_src_id.id,
+            "location_dest_id": self.env.ref("stock.stock_location_customers").id,
+        })
+        self.assertTrue(any("comuna" in t for t in entrega._l10n_cl_transport_blockers()))

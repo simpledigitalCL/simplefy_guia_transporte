@@ -10,10 +10,11 @@ class ResCompany(models.Model):
         default="warn",
         required=True,
         help="Tratamiento de una guía de despacho a la que le faltan datos de transporte de la "
-             "Res. Ex. SII N° 154 (patente, chofer, RUT, calle o comuna de destino). «Informar y "
-             "emitir» la emite y detalla lo pendiente en la operación; «Bloquear la emisión» no "
-             "la emite hasta completarlos. Un RUT con dígito verificador incorrecto o una patente "
-             "de más de 8 caracteres siempre bloquean la emisión.",
+             "Res. Ex. SII N° 154 (patente, chofer, RUT del chofer o del transportista, calle de "
+             "destino). «Informar y emitir» la emite y detalla lo pendiente en la operación; "
+             "«Bloquear la emisión» no la emite hasta completarlos. Lo que el SII rechaza siempre "
+             "bloquea la emisión: un RUT con dígito verificador incorrecto, una patente de más de "
+             "8 caracteres, un destinatario sin RUT o sin comuna.",
     )
 
 

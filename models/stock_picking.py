@@ -295,12 +295,17 @@ class StockPicking(models.Model):
         self.ensure_one()
         problemas = []
         destino = self.partner_id
+        if destino and not (destino.commercial_partner_id.vat or destino.vat):
+            # Sin RUT del destinatario el SII rechaza la guía.
+            problemas.append((_(
+                "El destinatario %s no tiene RUT.", destino.commercial_partner_id.display_name), SIEMPRE))
         if destino and not (destino.street or destino.street2):
             problemas.append((
                 _("La dirección de destino de %s no tiene calle.", destino.display_name), ESTRICTO))
         if destino and not self._l10n_cl_get_comuna_recep():
+            # Sin comuna del destinatario el SII rechaza la guía por error de esquema.
             problemas.append((
-                _("La dirección de destino de %s no tiene comuna.", destino.display_name), ESTRICTO))
+                _("La dirección de destino de %s no tiene comuna.", destino.display_name), SIEMPRE))
 
         propia = self._l10n_cl_is_own_fleet()
         vehiculo = self.l10n_cl_fleet_vehicle_id
@@ -447,6 +452,85 @@ class StockPicking(models.Model):
             self._l10n_cl_sync_batch_vehicle()
         return res
 
+    # ------------------------------------------------------------------ descuentos de la venta
+
+    @api.model
+    def _l10n_cl_es_descuento(self, move):
+        """Una línea de descuento (precio negativo en la venta o en el producto) que llegó a la
+        bodega porque el producto de descuento no es un servicio."""
+        precio = move.sale_line_id.price_unit if move.sale_line_id else move.product_id.lst_price
+        return precio < 0
+
+    def _l10n_cl_dte_moves(self):
+        """Los ítems de la guía: el SII no acepta líneas con precio negativo, así que un descuento
+        nunca va como ítem; va como descuento global."""
+        self.ensure_one()
+        return self.move_ids.filtered(lambda m: m.quantity > 0 and not self._l10n_cl_es_descuento(m))
+
+    def _l10n_cl_lineas_descuento_venta(self):
+        self.ensure_one()
+        if not self.sale_id:
+            return self.env["sale.order.line"]
+        return self.sale_id.order_line.filtered(lambda l: not l.display_type and l.price_subtotal < 0)
+
+    def _l10n_cl_get_tax_amounts(self):
+        totals, retentions, line_amounts = super()._l10n_cl_get_tax_amounts()
+        self._l10n_cl_aplicar_descuento_global(totals, line_amounts)
+        return totals, retentions, line_amounts
+
+    def _l10n_cl_aplicar_descuento_global(self, totals, line_amounts):
+        """Lleva a la guía el descuento de la venta como descuento global (DscRcgGlobal), para que
+        sus montos cuadren con la orden de venta. Si la guía despacha solo parte de la venta, el
+        descuento se aplica en la misma proporción."""
+        self.ensure_one()
+        moneda = self.company_id.currency_id
+
+        # 1. Las líneas de descuento que Odoo sumó como ítem salen de los totales.
+        for move in [m for m in list(line_amounts) if self._l10n_cl_es_descuento(m)]:
+            vals = line_amounts.pop(move)
+            if vals.get("exempt"):
+                totals["subtotal_amount_exempt"] -= vals["total_amount"]
+            else:
+                totals["subtotal_amount_taxable"] -= vals["total_amount"]
+                totals["vat_amount"] -= vals["value"] - vals["total_amount"]
+            totals["total_amount"] -= vals["value"]
+
+        # 2. El descuento de la venta, en proporción a lo que despacha esta guía.
+        lineas = self._l10n_cl_lineas_descuento_venta()
+        if not lineas or self.partner_id.l10n_cl_delivery_guide_price != "sale_order":
+            return
+        descuento_venta = -sum(lineas.mapped("price_subtotal"))
+        valor_venta = sum(self.sale_id.order_line.filtered(
+            lambda l: not l.display_type and l.price_subtotal > 0 and l.product_id.type == "consu"
+        ).mapped("price_subtotal"))
+        afecto = totals["subtotal_amount_taxable"] > 0
+        base = totals["subtotal_amount_taxable"] if afecto else totals["subtotal_amount_exempt"]
+        if not valor_venta or base <= 0:
+            return
+        if moneda.compare_amounts(base, valor_venta) >= 0:
+            monto = descuento_venta
+        else:
+            monto = descuento_venta * base / valor_venta
+        monto = moneda.round(min(monto, base))
+        if moneda.is_zero(monto):
+            return
+
+        if afecto:
+            neto = base - monto
+            porcentaje = float(totals.get("vat_percent") or 0.0)
+            iva = moneda.round(neto * porcentaje / 100.0) if porcentaje else 0.0
+            totals["total_amount"] += (neto - base) + (iva - totals["vat_amount"])
+            totals["subtotal_amount_taxable"] = neto
+            totals["vat_amount"] = iva
+        else:
+            totals["subtotal_amount_exempt"] -= monto
+            totals["total_amount"] -= monto
+        totals["l10n_cl_global_discounts"] = [{
+            "glosa": ", ".join(dict.fromkeys(lineas.mapped("product_id.name"))) or _("Descuento"),
+            "amount": monto,
+            "exempt": not afecto,
+        }]
+
     # ------------------------------------------------------------------ emisión
 
     def _l10n_cl_prepare_transport_data(self):
@@ -465,8 +549,8 @@ class StockPicking(models.Model):
                 picking.l10n_cl_edi_arrival_date = picking._l10n_cl_edi_get_departure_datetime().date()
         if errores:
             raise UserError(_(
-                "No es posible emitir la guía de despacho: faltan datos de transporte exigidos "
-                "por la Res. Ex. SII N° 154.\n\n%s", "\n\n".join(errores)
+                "No es posible emitir la guía de despacho: el SII la rechazaría o faltan datos "
+                "exigidos por la Res. Ex. SII N° 154.\n\n%s", "\n\n".join(errores)
             ))
 
     def create_delivery_guide(self):

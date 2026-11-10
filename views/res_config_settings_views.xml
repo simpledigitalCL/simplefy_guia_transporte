@@ -11,8 +11,9 @@
                          help="Tratamiento de una guía a la que le faltan datos de transporte exigidos por la Res. Ex. SII N° 154.">
                     <field name="l10n_cl_transport_check" widget="radio"/>
                     <div class="text-muted small mt-1">
-                        Un RUT con dígito verificador incorrecto o una patente de más de 8
-                        caracteres siempre bloquean la emisión.
+                        Lo que el SII rechaza siempre bloquea la emisión: un RUT con dígito
+                        verificador incorrecto, una patente de más de 8 caracteres, un
+                        destinatario sin RUT o sin comuna.
                     </div>
                 </setting>
             </xpath>

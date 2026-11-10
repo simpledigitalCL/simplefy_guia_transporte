@@ -26,6 +26,37 @@
     </template>
 
     <!--
+        XML de la guía, receptor y montos:
+        - Razón social y RUT del destinatario son los de la empresa, no los de la dirección de
+          despacho: una dirección sin nombre dejaba la razón social vacía y el SII la rechazaba.
+        - Un descuento nunca va como ítem (el SII rechaza precios negativos): va como descuento
+          global, con el monto de la venta, para que la guía cuadre con la orden de venta.
+    -->
+    <template id="dte_subtemplate_receptor_descuento" inherit_id="l10n_cl_edi_stock.dte_subtemplate">
+        <xpath expr="//RUTRecep" position="replace">
+            <RUTRecep t-out="format_vat(picking.partner_id.commercial_partner_id.vat or picking.partner_id.vat)"/>
+        </xpath>
+        <xpath expr="//RznSocRecep" position="replace">
+            <RznSocRecep t-out="format_length(picking.partner_id.commercial_partner_id.name or picking.partner_id.name, 100)"/>
+        </xpath>
+        <xpath expr="//t[@t-as='line']" position="attributes">
+            <attribute name="t-foreach">picking._l10n_cl_dte_moves()</attribute>
+        </xpath>
+        <xpath expr="//t[@t-if='picking.sale_id.client_order_ref']" position="before">
+            <t t-foreach="amounts.get('l10n_cl_global_discounts', [])" t-as="descuento_global">
+                <DscRcgGlobal>
+                    <NroLinDR t-out="descuento_global_index + 1"/>
+                    <TpoMov>D</TpoMov>
+                    <GlosaDR t-out="format_length(descuento_global['glosa'], 45)"/>
+                    <TpoValor>$</TpoValor>
+                    <ValorDR t-out="float_repr(descuento_global['amount'], 0)"/>
+                    <IndExeDR t-if="descuento_global['exempt']">1</IndExeDR>
+                </DscRcgGlobal>
+            </t>
+        </xpath>
+    </template>
+
+    <!--
         Guía impresa: los datos de transporte en un recuadro compacto de tres columnas. Los títulos
         van en el color principal de la empresa (Ajustes › Diseño del documento) y los datos en
         negro.
