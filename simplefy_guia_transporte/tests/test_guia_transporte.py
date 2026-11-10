@@ -401,3 +401,43 @@ class TestGuiaDescuentos(TransactionCase):
             "location_dest_id": self.env.ref("stock.stock_location_customers").id,
         })
         self.assertTrue(any("comuna" in t for t in entrega._l10n_cl_transport_blockers()))
+
+
+@tagged("post_install", "-at_install")
+class TestGuiaPermisos(TransactionCase):
+    """Un usuario de Inventario guarda una operación cuyo chofer externo es el contacto de otro
+    usuario de Odoo (caso real: «No tienes permiso para modificar registros Usuario»)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        from odoo.tests.common import new_test_user
+        cls.empresa = cls.env.company
+        chile = cls.env.ref("base.cl")
+        cls.empresa.write({"country_id": chile.id, "account_fiscal_country_id": chile.id})
+        cls.bodeguera = new_test_user(cls.env, login="bodeguera_prueba", groups="stock.group_stock_user")
+        otro = new_test_user(cls.env, login="contador_prueba", groups="base.group_user")
+        otro.partner_id.write({"name": "Contador Con Usuario", "vat": "17505105-8"})
+        cls.chofer_usuario = otro.partner_id
+        cls.cliente = cls.env["res.partner"].create({
+            "name": "Cliente Permisos SpA", "vat": "76543210-3", "street": "Calle 1", "city": "Rancagua"})
+        tipo = cls.env["stock.picking.type"].search(
+            [("code", "=", "outgoing"), ("company_id", "=", cls.empresa.id)], limit=1)
+        cls.entrega = cls.env["stock.picking"].create({
+            "picking_type_id": tipo.id, "partner_id": cls.cliente.id,
+            "location_id": tipo.default_location_src_id.id,
+            "location_dest_id": cls.env.ref("stock.stock_location_customers").id,
+            "l10n_cl_transport_mode": "external", "l10n_cl_edi_driver_id": cls.chofer_usuario.id,
+        })
+
+    def test_guardar_sin_tocar_el_rut_no_escribe_el_contacto(self):
+        entrega = self.entrega.with_user(self.bodeguera)
+        # El formulario reenvía el RUT con puntos al guardar, aunque nadie lo haya cambiado.
+        entrega.write({"l10n_cl_driver_vat": "17.505.105-8", "l10n_cl_trailer_license_plate": "JJ1122"})
+        self.assertEqual(self.chofer_usuario.vat, "17505105-8")
+        self.assertEqual(self.entrega.l10n_cl_trailer_license_plate, "JJ1122")
+
+    def test_cambiar_el_rut_de_un_usuario_avisa(self):
+        entrega = self.entrega.with_user(self.bodeguera)
+        with self.assertRaises(UserError):
+            entrega.write({"l10n_cl_driver_vat": "12.345.678-5"})

@@ -179,13 +179,30 @@ class StockPicking(models.Model):
         for picking in self:
             picking.l10n_cl_transport_vat = picking._l10n_cl_rut_en_pantalla(picking._l10n_cl_transportista().vat)
 
+    @api.model
+    def _l10n_cl_set_partner_vat(self, contacto, valor):
+        """Guarda en el contacto el RUT escrito en la operación, solo si cambió.
+
+        La pantalla muestra el RUT con puntos y el formulario lo vuelve a enviar al guardar
+        aunque nadie lo haya tocado: compararlo en su forma canónica evita escribir en el
+        contacto sin necesidad (el contacto de un usuario de Odoo solo lo puede modificar quien
+        administra usuarios)."""
+        nuevo = (rut_canonico(valor) if rut_es_valido(valor) else valor) or False
+        actual = contacto.vat or False
+        if (rut_canonico(actual) or actual) == (rut_canonico(nuevo) or nuevo):
+            return
+        if contacto.user_ids:
+            raise UserError(_(
+                "%s es un usuario de Odoo: su RUT se modifica en su ficha de contacto, con permiso "
+                "de administración de usuarios.", contacto.display_name))
+        contacto.vat = nuevo
+
     def _inverse_l10n_cl_transport_vat(self):
         for picking in self:
             transportista = picking.l10n_cl_transport_partner_id
             if picking._l10n_cl_is_own_fleet() or not transportista:
                 continue
-            valor = picking.l10n_cl_transport_vat
-            transportista.vat = rut_canonico(valor) if rut_es_valido(valor) else valor
+            self._l10n_cl_set_partner_vat(transportista, picking.l10n_cl_transport_vat)
 
     @api.depends("l10n_cl_transport_mode", "l10n_cl_driver_employee_id", "l10n_cl_edi_driver_id.vat")
     def _compute_l10n_cl_driver_vat(self):
@@ -197,8 +214,7 @@ class StockPicking(models.Model):
             chofer = picking.l10n_cl_edi_driver_id
             if picking._l10n_cl_is_own_fleet() or not chofer:
                 continue  # el RUT de un empleado se cambia en su ficha
-            valor = picking.l10n_cl_driver_vat
-            chofer.vat = rut_canonico(valor) if rut_es_valido(valor) else valor
+            self._l10n_cl_set_partner_vat(chofer, picking.l10n_cl_driver_vat)
 
     @api.depends("l10n_cl_fleet_vehicle_id")
     def _compute_l10n_cl_vehicle_load_weight(self):
