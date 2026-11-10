@@ -3,5 +3,11 @@ from . import wizards
 
 
 def post_init_hook(env):
-    """Crea el transporte para la guía de cada vehículo de la Flota que ya tenga patente."""
-    env["fleet.vehicle"].with_context(active_test=False).search([])._l10n_cl_sync_transport()
+    """Marca como choferes de la empresa a los empleados cuyo cargo es de chofer o conductor."""
+    Empleado = env["hr.employee"].with_context(active_test=False)
+    choferes = Empleado.search([
+        "|", "|", "|",
+        ("job_title", "ilike", "chofer"), ("job_title", "ilike", "conductor"),
+        ("job_id.name", "ilike", "chofer"), ("job_id.name", "ilike", "conductor"),
+    ])
+    choferes.write({"l10n_cl_is_driver": True})

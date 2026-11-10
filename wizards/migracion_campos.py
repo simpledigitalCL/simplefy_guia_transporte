@@ -33,7 +33,7 @@ EN_LA_SECCION = {
     "l10n_cl_fleet_vehicle_id", "l10n_cl_crew_employee_ids",
     "l10n_cl_vehicle_weight_capacity", "l10n_cl_vehicle_load_weight",
 }
-SOLO_FUERA_DE_LA_SECCION = "picking_type_code == 'outgoing' and country_code == 'CL'"
+SOLO_FUERA_DE_LA_SECCION = "country_code == 'CL' and (picking_type_code in ('outgoing', 'internal') or l10n_cl_dte_status)"
 
 
 def _renombrar(texto, renombres):
@@ -158,20 +158,26 @@ class TransportFieldMigration(models.TransientModel):
                              origen=origen.field_description, destino=destino.string, n=cr.rowcount))
         self.env.invalidate_all()
 
-        # Las entregas abiertas que recibieron vehículo toman su patente, chofer y transportista.
-        # Las ya despachadas no se tocan: su guía se emitió sin esos datos.
-        Picking = self.env["stock.picking"]
-        abiertas = Picking.search([
-            ("l10n_cl_fleet_vehicle_id", "!=", False),
+        # Las operaciones abiertas que recibieron vehículo toman su patente y, si están vacíos,
+        # el chofer y los acompañantes habituales. Si entre los acompañantes hay un solo chofer de
+        # la empresa, ese es el chofer. Las ya despachadas no se tocan: su guía se emitió sin
+        # esos datos.
+        abiertas = self.env["stock.picking"].search([
             ("state", "not in", ("done", "cancel")),
             ("l10n_cl_dte_status", "in", (False, "cancelled")),
+            "|", ("l10n_cl_fleet_vehicle_id", "!=", False), ("l10n_cl_crew_employee_ids", "!=", False),
         ])
-        for nombre in ("l10n_cl_edi_transport_id", "l10n_cl_edi_driver_id", "l10n_cl_transport_partner_id"):
-            self.env.add_to_compute(Picking._fields[nombre], abiertas)
+        abiertas._l10n_cl_fill_from_vehicle()
+        for picking in abiertas.filtered(lambda p: not p.l10n_cl_driver_employee_id):
+            choferes = picking.l10n_cl_crew_employee_ids.filtered("l10n_cl_is_driver")
+            if len(choferes) == 1:
+                picking.write({
+                    "l10n_cl_driver_employee_id": choferes.id,
+                    "l10n_cl_crew_employee_ids": [(3, choferes.id)],
+                })
         self.env.flush_all()
         if abiertas:
-            informe.append(_("Patente, chofer y transportista completados en %s entregas abiertas.",
-                             len(abiertas)))
+            informe.append(_("Patente y chofer completados en %s operaciones abiertas.", len(abiertas)))
         return informe
 
     def _reescribir_arch(self, vistas, transformar):

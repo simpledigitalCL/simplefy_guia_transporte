@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!--
-        Los datos de transporte de la Res. 154 juntos, bajo el encabezado de la entrega.
+        Los datos de transporte de la Res. 154 juntos, bajo el encabezado de la operación (entregas,
+        traslados internos y cualquier otra que emita guía de despacho).
 
         Odoo los repartía entre el encabezado (salida y llegada) y la última pestaña (transporte y
         chofer). Se sacan de ahí y se presentan en una sola sección, fuera de los grupos del
@@ -20,21 +21,30 @@
             <xpath expr="//page[@name='electronic_invoice']//field[@name='l10n_cl_edi_driver_id']" position="replace"/>
 
             <xpath expr="//field[@name='picking_properties']" position="before">
-                <div name="l10n_cl_transporte" class="mt-2 mb-3"
-                     invisible="country_code != 'CL' or picking_type_code != 'outgoing'">
-                    <separator string="Transporte para la guía de despacho"/>
-                    <div class="alert alert-warning mb-2" role="alert" invisible="not l10n_cl_transport_issues">
+                <div name="l10n_cl_transporte" class="o_l10n_cl_transporte mt-3 mb-3"
+                     invisible="country_code != 'CL' or (picking_type_code not in ('outgoing', 'internal') and not l10n_cl_dte_status)">
+                    <field name="l10n_cl_transport_locked" invisible="1"/>
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 border-bottom pb-1 mb-2">
+                        <span class="o_form_label fs-5 fw-bold">Transporte</span>
+                        <field name="l10n_cl_transport_mode" widget="radio" nolabel="1"
+                               options="{'horizontal': true}" class="mb-0"
+                               readonly="l10n_cl_transport_locked"/>
+                    </div>
+                    <div class="alert alert-warning py-2 mb-2" role="alert" invisible="not l10n_cl_transport_issues">
                         <field name="l10n_cl_transport_issues" nolabel="1" readonly="1"/>
                     </div>
                     <group name="l10n_cl_transporte_datos" class="mt-0">
-                        <group name="l10n_cl_transporte_vehiculo">
+                        <group name="l10n_cl_transporte_vehiculo" string="Vehículo y transportista">
+                            <!-- Flota propia -->
                             <field name="l10n_cl_fleet_vehicle_id"
+                                   invisible="l10n_cl_transport_mode != 'own'"
                                    options="{'no_create': True}"
-                                   placeholder="Vehículo de la Flota"
-                                   readonly="l10n_cl_dte_status not in [False, 'cancelled']"/>
+                                   placeholder="Seleccione un vehículo de la Flota"
+                                   readonly="l10n_cl_transport_locked"/>
                             <label for="l10n_cl_vehicle_load_weight" string="Carga"
-                                   invisible="not l10n_cl_fleet_vehicle_id"/>
-                            <div class="d-flex align-items-baseline gap-1" invisible="not l10n_cl_fleet_vehicle_id">
+                                   invisible="l10n_cl_transport_mode != 'own' or not l10n_cl_fleet_vehicle_id"/>
+                            <div class="d-flex align-items-baseline gap-1"
+                                 invisible="l10n_cl_transport_mode != 'own' or not l10n_cl_fleet_vehicle_id">
                                 <field name="l10n_cl_vehicle_load_weight" nolabel="1" class="oe_inline w-auto"
                                        digits="[16, 0]"
                                        decoration-danger="l10n_cl_vehicle_weight_capacity and l10n_cl_vehicle_load_weight &gt; l10n_cl_vehicle_weight_capacity"/>
@@ -43,37 +53,63 @@
                                        digits="[16, 0]" invisible="not l10n_cl_vehicle_weight_capacity"/>
                                 <span>kg asignados</span>
                             </div>
-                            <field name="l10n_cl_edi_transport_id"
-                                   placeholder="Se completa con el vehículo"
-                                   context="{'default_company_id': company_id}"
-                                   readonly="l10n_cl_dte_status not in [False, 'cancelled']"/>
-                            <field name="l10n_cl_trailer_license_plate"
-                                   invisible="not l10n_cl_trailer_license_plate"/>
-                            <field name="l10n_cl_transport_partner_id"
-                                   placeholder="Empresa que hace el traslado"
-                                   readonly="l10n_cl_dte_status not in [False, 'cancelled']"/>
-                            <field name="l10n_cl_transport_vat"
-                                   placeholder="76.086.428-5"
-                                   invisible="not l10n_cl_transport_partner_id"
-                                   readonly="l10n_cl_dte_status not in [False, 'cancelled']"/>
+                            <field name="l10n_cl_own_transport_partner_id" string="Transportista"
+                                   invisible="l10n_cl_transport_mode != 'own'"
+                                   options="{'no_open': True}"/>
+                            <!-- Transporte externo -->
+                            <label for="l10n_cl_transport_partner_id" invisible="l10n_cl_transport_mode != 'external'"/>
+                            <div class="o_row" invisible="l10n_cl_transport_mode != 'external'">
+                                <field name="l10n_cl_transport_partner_id" nolabel="1"
+                                       domain="[('category_id', '=', %(simplefy_guia_transporte.partner_category_carrier)d)]"
+                                       options="{'no_create': True}"
+                                       placeholder="Empresa que realiza el traslado"
+                                       readonly="l10n_cl_transport_locked"/>
+                                <button name="action_l10n_cl_new_carrier" type="object" string="Nuevo"
+                                        icon="fa-plus" class="btn btn-link px-1 text-nowrap"
+                                        invisible="l10n_cl_transport_locked"/>
+                            </div>
+                            <field name="l10n_cl_transport_vat" placeholder="76.086.428-5"
+                                   invisible="l10n_cl_transport_mode == 'external' and not l10n_cl_transport_partner_id"
+                                   readonly="l10n_cl_transport_locked or l10n_cl_transport_mode == 'own'"/>
+                            <!-- Ambos -->
+                            <field name="l10n_cl_license_plate" placeholder="ABCD12"
+                                   readonly="l10n_cl_transport_locked"/>
+                            <field name="l10n_cl_trailer_license_plate" placeholder="Sin carro"
+                                   readonly="l10n_cl_transport_locked"/>
                         </group>
-                        <group name="l10n_cl_transporte_chofer">
-                            <field name="l10n_cl_edi_driver_id"
-                                   placeholder="Chofer designado en la Flota"
-                                   readonly="l10n_cl_dte_status not in [False, 'cancelled']"/>
-                            <field name="l10n_cl_driver_vat"
-                                   placeholder="12.345.678-5"
-                                   invisible="not l10n_cl_edi_driver_id"
-                                   readonly="l10n_cl_dte_status not in [False, 'cancelled']"/>
+                        <group name="l10n_cl_transporte_chofer" string="Chofer y traslado">
+                            <!-- Flota propia: un empleado -->
+                            <field name="l10n_cl_driver_employee_id"
+                                   invisible="l10n_cl_transport_mode != 'own'"
+                                   options="{'no_create': True}"
+                                   placeholder="Chofer de la empresa"
+                                   readonly="l10n_cl_transport_locked"/>
+                            <!-- Transporte externo: un contacto -->
+                            <label for="l10n_cl_edi_driver_id" string="Chofer"
+                                   invisible="l10n_cl_transport_mode != 'external'"/>
+                            <div class="o_row" invisible="l10n_cl_transport_mode != 'external'">
+                                <field name="l10n_cl_edi_driver_id" nolabel="1"
+                                       domain="[('category_id', '=', %(simplefy_guia_transporte.partner_category_external_driver)d)]"
+                                       options="{'no_create': True}"
+                                       placeholder="Chofer del transportista"
+                                       readonly="l10n_cl_transport_locked"/>
+                                <button name="action_l10n_cl_new_driver" type="object" string="Nuevo"
+                                        icon="fa-plus" class="btn btn-link px-1 text-nowrap"
+                                        invisible="l10n_cl_transport_locked"/>
+                            </div>
+                            <field name="l10n_cl_driver_vat" placeholder="12.345.678-5"
+                                   invisible="not l10n_cl_driver_employee_id and l10n_cl_transport_mode == 'own' or not l10n_cl_edi_driver_id and l10n_cl_transport_mode == 'external'"
+                                   readonly="l10n_cl_transport_locked or l10n_cl_transport_mode == 'own'"/>
                             <field name="l10n_cl_crew_employee_ids" widget="many2many_tags"
+                                   invisible="l10n_cl_transport_mode != 'own'"
                                    options="{'no_create': True}"
                                    placeholder="Peonetas"/>
                             <field name="l10n_cl_edi_departure_date"
-                                   placeholder="Al emitir la guía"
-                                   readonly="l10n_cl_dte_status not in [False, 'cancelled']"/>
+                                   placeholder="Se registra al emitir la guía"
+                                   readonly="l10n_cl_transport_locked"/>
                             <field name="l10n_cl_edi_arrival_date"
                                    placeholder="El día de la salida"
-                                   readonly="l10n_cl_dte_status not in [False, 'cancelled']"/>
+                                   readonly="l10n_cl_transport_locked"/>
                         </group>
                     </group>
                     <div class="text-muted small text-end">

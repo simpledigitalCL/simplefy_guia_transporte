@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="l10n_cl_transport_contact_wizard_view_form" model="ir.ui.view">
+        <field name="name">l10n_cl.transport.contact.wizard.form</field>
+        <field name="model">l10n_cl.transport.contact.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Nuevo contacto de transporte">
+                <field name="picking_id" invisible="1"/>
+                <field name="contact_type" invisible="1"/>
+                <p class="text-muted mb-3" invisible="contact_type != 'driver'">
+                    Registre al chofer del transportista externo. El contacto se crea con la
+                    etiqueta «Chofer externo» y queda disponible para las próximas guías.
+                </p>
+                <p class="text-muted mb-3" invisible="contact_type != 'carrier'">
+                    Registre a la empresa externa que realiza el traslado. El contacto se crea con
+                    la etiqueta «Transportista» y queda disponible para las próximas guías.
+                </p>
+                <group>
+                    <field name="name" placeholder="Nombre y apellidos" invisible="contact_type != 'driver'"/>
+                    <field name="name" string="Razón social" placeholder="Nombre de la empresa"
+                           invisible="contact_type != 'carrier'"/>
+                    <field name="vat" placeholder="12.345.678-5"/>
+                </group>
+                <div class="alert alert-info mb-0" role="status" invisible="not preview_name">
+                    <div invisible="existing_partner_id">
+                        Se registrará como <strong><field name="preview_name" class="oe_inline"/></strong>
+                        <span invisible="not preview_vat">, RUT <field name="preview_vat" class="oe_inline"/></span>.
+                    </div>
+                    <div invisible="not existing_partner_id">
+                        Ya existe un contacto con este RUT:
+                        <strong><field name="existing_partner_id" class="oe_inline" options="{'no_open': True}"/></strong>.
+                        Se utilizará ese contacto.
+                    </div>
+                </div>
+                <div class="text-muted small text-center mt-3">
+                    Guía de Despacho: Transporte · by
+                    <a href="https://simpledigital.cl" target="_blank" rel="noopener noreferrer">Simpledigital</a>
+                </div>
+                <footer>
+                    <button name="action_confirm" type="object" string="Registrar" class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancelar" special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

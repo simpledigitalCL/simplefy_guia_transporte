@@ -1,7 +1,7 @@
 from odoo.exceptions import UserError
-from odoo.tests import TransactionCase, tagged
+from odoo.tests import Form, TransactionCase, tagged
 
-from ..models.rut import normalizar_patente, rut_es_valido
+from ..models.rut import nombre_propio, normalizar_patente, rut_canonico, rut_con_puntos, rut_es_valido
 
 
 @tagged("post_install", "-at_install")
@@ -11,210 +11,239 @@ class TestGuiaTransporte(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.empresa = cls.env.company
+        chile = cls.env.ref("base.cl")
+        cls.empresa.write({"country_id": chile.id, "account_fiscal_country_id": chile.id})
         cls.empresa.partner_id.vat = "76086428-5"
-        cls.chofer = cls.env["res.partner"].create({"name": "Juan Chofer", "vat": "11111111-1"})
+        cls.chofer = cls.env["hr.employee"].create({
+            "name": "Juan Chofer", "identification_id": "11.111.111-1", "l10n_cl_is_driver": True})
+        cls.peoneta = cls.env["hr.employee"].create({"name": "Pedro Peoneta"})
         marca = cls.env["fleet.vehicle.model.brand"].create({"name": "Chevrolet"})
         cls.modelo = cls.env["fleet.vehicle.model"].create({"name": "NPR 816", "brand_id": marca.id})
         cls.camion = cls.env["fleet.vehicle"].create({
             "model_id": cls.modelo.id,
             "license_plate": "tsrv-15",
-            "driver_id": cls.chofer.id,
             "company_id": cls.empresa.id,
+            "l10n_cl_driver_employee_id": cls.chofer.id,
+            "l10n_cl_crew_employee_ids": [(6, 0, cls.peoneta.ids)],
         })
         cls.cliente = cls.env["res.partner"].create({
             "name": "Cliente Destino", "street": "Av. Siempre Viva 742", "city": "Rancagua",
         })
         cls.tipo_salida = cls.env["stock.picking.type"].search(
             [("code", "=", "outgoing"), ("company_id", "=", cls.empresa.id)], limit=1)
+        cls.tipo_interno = cls.env["stock.picking.type"].search(
+            [("code", "=", "internal"), ("company_id", "=", cls.empresa.id)], limit=1)
+        cls.etiqueta_transportista = cls.env.ref("simplefy_guia_transporte.partner_category_carrier")
+        cls.etiqueta_chofer = cls.env.ref("simplefy_guia_transporte.partner_category_external_driver")
 
-    def _entrega(self, **vals):
+    def _entrega(self, tipo=None, **vals):
+        tipo = tipo or self.tipo_salida
         return self.env["stock.picking"].create(dict({
-            "picking_type_id": self.tipo_salida.id,
+            "picking_type_id": tipo.id,
             "partner_id": self.cliente.id,
-            "location_id": self.tipo_salida.default_location_src_id.id,
-            "location_dest_id": self.env.ref("stock.stock_location_customers").id,
+            "location_id": tipo.default_location_src_id.id,
+            "location_dest_id": (tipo.default_location_dest_id
+                                 or self.env.ref("stock.stock_location_customers")).id,
         }, **vals))
 
-    # ---------------------------------------------------------------- RUT y patente
+    def _externo(self, nombre="Transportes Sur SpA", rut="77806647-5"):
+        return self.env["res.partner"].create({
+            "name": nombre, "vat": rut, "is_company": True,
+            "category_id": [(4, self.etiqueta_transportista.id)]})
+
+    # ---------------------------------------------------------------- RUT, patente y nombres
 
     def test_rut(self):
         self.assertTrue(rut_es_valido("76.086.428-5"))
         self.assertTrue(rut_es_valido("CL760864285"))
-        self.assertTrue(rut_es_valido("11111111-1"))
         self.assertTrue(rut_es_valido("10.000.013-k"))
         self.assertFalse(rut_es_valido("76.086.428-4"))
         self.assertFalse(rut_es_valido("0-0"))
         self.assertFalse(rut_es_valido(False))
+        self.assertEqual(rut_canonico("10.000.013-k"), "10000013-K")
+        self.assertEqual(rut_con_puntos("76086428-5"), "76.086.428-5")
 
     def test_patente(self):
         self.assertEqual(normalizar_patente(" cyzx-40 "), "CYZX40")
         self.assertEqual(normalizar_patente("TX.26 18"), "TX2618")
         self.assertFalse(normalizar_patente(""))
 
-    # ---------------------------------------------------------------- Flota → transporte
+    def test_nombre_propio(self):
+        self.assertEqual(nombre_propio("JUAN carlos  DE la FUENTE"), "Juan Carlos de la Fuente")
+        self.assertEqual(nombre_propio("josé o'higgins pérez-cotapos"), "José O'Higgins Pérez-Cotapos")
+        self.assertEqual(nombre_propio("TRANSPORTES DEL SUR SPA", empresa=True), "Transportes del Sur SpA")
+        self.assertEqual(nombre_propio("logística norte ltda", empresa=True), "Logística Norte Ltda.")
 
-    def test_flota_crea_transporte(self):
-        transporte = self.camion._l10n_cl_get_transport()
-        self.assertEqual(transporte.license_plate, "TSRV15")
-        self.assertEqual(transporte.operator_id, self.chofer)
-        self.assertEqual(transporte.transport_company_id, self.empresa.partner_id)
-        self.assertIn("TSRV15", transporte.display_name)
+    # ---------------------------------------------------------------- flota propia
 
-    def test_flota_actualiza_transporte(self):
-        otro = self.env["res.partner"].create({"name": "Pedro Chofer", "vat": "22222222-2"})
-        self.camion.write({"license_plate": "TSRV-16", "driver_id": otro.id})
-        transporte = self.camion._l10n_cl_get_transport()
-        self.assertEqual(transporte.license_plate, "TSRV16")
-        self.assertEqual(transporte.operator_id, otro)
-        self.camion.active = False
-        self.assertFalse(transporte.active)
+    def test_vehiculo_completa_sin_borrar(self):
+        otro = self.env["hr.employee"].create({"name": "Otro Chofer", "l10n_cl_is_driver": True})
+        entrega = self._entrega()
+        entrega.write({"l10n_cl_driver_employee_id": otro.id, "l10n_cl_trailer_license_plate": "jj-11-22"})
+        entrega.l10n_cl_fleet_vehicle_id = self.camion
+        self.assertEqual(entrega.l10n_cl_license_plate, "TSRV15")
+        self.assertEqual(entrega.l10n_cl_driver_employee_id, otro, "el chofer ya elegido no se cambia")
+        self.assertEqual(entrega.l10n_cl_trailer_license_plate, "JJ1122", "el carro no se borra")
+        self.assertEqual(entrega.l10n_cl_crew_employee_ids, self.peoneta)
 
-    def test_vehiculo_sin_patente(self):
-        sin_patente = self.env["fleet.vehicle"].create({"model_id": self.modelo.id})
-        self.assertFalse(sin_patente._l10n_cl_get_transport())
+    def test_vehiculo_en_formulario_no_borra(self):
+        """Aldo: «si se selecciona un transporte con las celdas rellenas, estas se borran»."""
+        sin_chofer = self.env["fleet.vehicle"].create({
+            "model_id": self.modelo.id, "license_plate": "HLHB-31", "company_id": self.empresa.id})
+        with Form(self._entrega()) as form:
+            form.l10n_cl_driver_employee_id = self.chofer
+            form.l10n_cl_trailer_license_plate = "jj1122"
+            form.l10n_cl_fleet_vehicle_id = sin_chofer
+            self.assertEqual(form.l10n_cl_driver_employee_id, self.chofer)
+            self.assertEqual(form.l10n_cl_trailer_license_plate, "JJ1122")
+            self.assertEqual(form.l10n_cl_license_plate, "HLHB31")
 
-    def test_creacion_rapida_de_patente(self):
-        transporte = self.env["l10n_cl_edi.vehicle"].create({"name": "ab-12-34"})
-        self.assertEqual(transporte.license_plate, "AB1234")
-        self.assertEqual(transporte.name, "AB1234")
-        self.assertEqual(transporte.transport_company_id, self.env.company.partner_id)
-
-    # ---------------------------------------------------------------- la entrega
-
-    def test_entrega_desde_la_flota(self):
+    def test_flota_propia_transportista_y_chofer(self):
         entrega = self._entrega(l10n_cl_fleet_vehicle_id=self.camion.id)
-        self.assertEqual(entrega.l10n_cl_edi_transport_id, self.camion._l10n_cl_get_transport())
-        self.assertEqual(entrega.l10n_cl_edi_driver_id, self.chofer)
-        self.assertEqual(entrega.l10n_cl_transport_partner_id, self.empresa.partner_id)
-        problemas = [t for t, nivel in entrega._l10n_cl_transport_problems() if nivel != "aviso"]
-        self.assertFalse(problemas, problemas)
+        self.assertEqual(entrega.l10n_cl_transport_mode, "own")
+        self.assertEqual(entrega._l10n_cl_transportista(), self.empresa.partner_id)
+        self.assertEqual(entrega.l10n_cl_driver_employee_id, self.chofer)
+        self.assertEqual(entrega._l10n_cl_chofer(), {"name": "Juan Chofer", "vat": "11.111.111-1"})
+        self.assertEqual(entrega.l10n_cl_driver_vat, "11.111.111-1")
+        self.assertEqual(entrega.l10n_cl_transport_vat, "76.086.428-5")
 
-    def test_courier_del_metodo_de_envio(self):
-        courier = self.env["res.partner"].create({"name": "Courier SpA", "vat": "77806647-5"})
-        producto = self.env["product.product"].create({"name": "Despacho", "type": "service"})
+    def test_pasar_a_externo_quita_el_vehiculo_propio(self):
+        with Form(self._entrega()) as form:
+            form.l10n_cl_fleet_vehicle_id = self.camion
+            form.l10n_cl_trailer_license_plate = "JJ1122"
+            form.l10n_cl_transport_mode = "external"
+            self.assertFalse(form.l10n_cl_fleet_vehicle_id)
+            self.assertFalse(form.l10n_cl_license_plate, "la patente del camión propio no sirve")
+            self.assertEqual(form.l10n_cl_trailer_license_plate, "JJ1122", "lo escrito a mano queda")
+
+    def test_copia_no_arrastra_transporte(self):
+        entrega = self._entrega(l10n_cl_fleet_vehicle_id=self.camion.id)
+        copia = entrega.copy()
+        self.assertFalse(copia.l10n_cl_fleet_vehicle_id)
+        self.assertFalse(copia.l10n_cl_license_plate)
+        self.assertFalse(copia.l10n_cl_driver_employee_id)
+
+    # ---------------------------------------------------------------- transporte externo
+
+    def test_externo_no_crea_vehiculos(self):
+        vehiculos = self.env["fleet.vehicle"].search_count([])
+        transportista = self._externo()
+        entrega = self._entrega(
+            l10n_cl_transport_mode="external",
+            l10n_cl_transport_partner_id=transportista.id,
+            l10n_cl_license_plate="ab-cd-12",
+        )
+        self.assertEqual(entrega.l10n_cl_license_plate, "ABCD12")
+        self.assertEqual(self.env["fleet.vehicle"].search_count([]), vehiculos)
+        self.assertEqual(entrega._l10n_cl_transportista(), transportista)
+
+    def test_metodo_de_envio_externo(self):
+        courier = self._externo("Courier Express SpA", "96.919.050-8")
         metodo = self.env["delivery.carrier"].create({
-            "name": "Courier", "product_id": producto.id,
+            "name": "Courier", "product_id": self.env["product.product"].create(
+                {"name": "Despacho", "type": "service"}).id,
             "l10n_cl_transport_partner_id": courier.id,
         })
         entrega = self._entrega(carrier_id=metodo.id)
+        self.assertEqual(entrega.l10n_cl_transport_mode, "external")
         self.assertEqual(entrega.l10n_cl_transport_partner_id, courier)
-        self.assertFalse(entrega.l10n_cl_edi_transport_id)
-        # Sin patente no se bloquea: la guía sale con «Sin Dato».
-        problemas = [t for t, nivel in entrega._l10n_cl_transport_problems() if nivel != "aviso"]
-        self.assertFalse(problemas, problemas)
 
-    def test_chofer_con_rut_malo_bloquea(self):
-        self.chofer.vat = "11111111-2"
-        entrega = self._entrega(l10n_cl_fleet_vehicle_id=self.camion.id)
-        siempre = [t for t, nivel in entrega._l10n_cl_transport_problems() if nivel == "siempre"]
-        self.assertEqual(len(siempre), 1)
-        self.assertIn("no es válido", siempre[0])
-        # Un RUT malo bloquea aunque la empresa solo pida avisar.
-        self.empresa.l10n_cl_transport_check = "warn"
-        self.assertEqual(entrega._l10n_cl_transport_blockers(), siempre)
+    def test_alta_rapida_de_chofer(self):
+        entrega = self._entrega()
+        accion = entrega.action_l10n_cl_new_driver()
+        asistente = self.env[accion["res_model"]].with_context(accion["context"]).create({
+            "name": "  MARÍA josé DE LA cruz ", "vat": "21.333.444-1"})
+        self.assertEqual(asistente.preview_name, "María José de la Cruz")
+        asistente.action_confirm()
+        chofer = entrega.l10n_cl_edi_driver_id
+        self.assertEqual(chofer.name, "María José de la Cruz")
+        self.assertEqual(chofer.vat, "21333444-1")
+        self.assertFalse(chofer.is_company)
+        self.assertIn(self.etiqueta_chofer, chofer.category_id)
+        self.assertEqual(entrega.l10n_cl_transport_mode, "external")
+        self.assertEqual(entrega._l10n_cl_chofer()["name"], "María José de la Cruz")
 
-    def test_vehiculo_propio_sin_chofer_bloquea(self):
-        camion = self.env["fleet.vehicle"].create({
-            "model_id": self.modelo.id, "license_plate": "HLHB31", "company_id": self.empresa.id,
-        })
-        entrega = self._entrega(l10n_cl_fleet_vehicle_id=camion.id)
-        self.assertIn(("Indique el chofer del vehículo.", "estricto"), entrega._l10n_cl_transport_problems())
+        # El mismo RUT, escrito de otra forma, no crea un contacto duplicado.
+        otra = self._entrega()
+        asistente = self.env["l10n_cl.transport.contact.wizard"].create({
+            "picking_id": otra.id, "contact_type": "driver", "name": "maria cruz", "vat": "213334441"})
+        self.assertEqual(asistente.existing_partner_id, chofer)
+        asistente.action_confirm()
+        self.assertEqual(otra.l10n_cl_edi_driver_id, chofer)
 
-    def test_sin_transporte_solo_avisa(self):
+    def test_alta_rapida_rut_invalido(self):
+        asistente = self.env["l10n_cl.transport.contact.wizard"].create({
+            "contact_type": "carrier", "name": "transportes sur spa", "vat": "77.806.647-4"})
+        with self.assertRaises(UserError):
+            asistente.action_confirm()
+
+    def test_alta_rapida_de_transportista(self):
+        entrega = self._entrega()
+        asistente = self.env["l10n_cl.transport.contact.wizard"].create({
+            "picking_id": entrega.id, "contact_type": "carrier",
+            "name": "TRANSPORTES SUR SPA", "vat": "78.444.555-0"})
+        asistente.action_confirm()
+        transportista = entrega.l10n_cl_transport_partner_id
+        self.assertEqual(transportista.name, "Transportes Sur SpA")
+        self.assertTrue(transportista.is_company)
+        self.assertIn(self.etiqueta_transportista, transportista.category_id)
+
+    def test_rut_del_chofer_externo_desde_la_entrega(self):
+        chofer = self.env["res.partner"].create({"name": "Chofer Externo"})
+        entrega = self._entrega(l10n_cl_transport_mode="external", l10n_cl_edi_driver_id=chofer.id)
+        entrega.l10n_cl_driver_vat = "12.345.678-5"
+        self.assertEqual(chofer.vat, "12345678-5")
+        self.assertEqual(entrega.l10n_cl_driver_vat, "12.345.678-5")
+
+    # ---------------------------------------------------------------- traslados internos
+
+    def test_traslado_interno_lleva_transporte(self):
+        traslado = self._entrega(tipo=self.tipo_interno, l10n_cl_fleet_vehicle_id=self.camion.id)
+        self.assertTrue(traslado._l10n_cl_transport_applies())
+        self.assertEqual(traslado.l10n_cl_license_plate, "TSRV15")
+
+    # ---------------------------------------------------------------- revisión
+
+    def test_problemas_flota_propia(self):
+        sin_rut = self.env["hr.employee"].create({"name": "Sin Rut", "l10n_cl_is_driver": True})
+        entrega = self._entrega(l10n_cl_license_plate="TSRV15", l10n_cl_driver_employee_id=sin_rut.id)
+        textos = [t for t, _n in entrega._l10n_cl_transport_problems()]
+        self.assertTrue(any("ficha de empleado" in t for t in textos))
+        self.assertFalse(entrega._l10n_cl_transport_blockers(), "por defecto solo se informa")
+        self.empresa.l10n_cl_transport_check = "block"
+        self.assertTrue(entrega._l10n_cl_transport_blockers())
+
+    def test_rut_invalido_siempre_bloquea(self):
+        malo = self.env["res.partner"].create({"name": "Chofer Malo", "vat": "11111111-2"})
+        entrega = self._entrega(
+            l10n_cl_transport_mode="external", l10n_cl_transport_partner_id=self._externo().id,
+            l10n_cl_license_plate="AB1234", l10n_cl_edi_driver_id=malo.id)
+        self.assertTrue(any("no es válido" in t for t in entrega._l10n_cl_transport_blockers()))
+
+    def test_patente_larga_siempre_bloquea(self):
+        entrega = self._entrega(l10n_cl_license_plate="ABCDEFGHIJ")
+        self.assertTrue(any("8 caracteres" in t for t in entrega._l10n_cl_transport_blockers()))
+
+    def test_sin_datos_solo_avisa(self):
         entrega = self._entrega()
         problemas = entrega._l10n_cl_transport_problems()
-        self.assertEqual([nivel for _t, nivel in problemas], ["aviso"])
-
-    def test_direccion_sin_calle_bloquea(self):
-        self.cliente.street = False
-        entrega = self._entrega(l10n_cl_fleet_vehicle_id=self.camion.id)
-        problemas = entrega._l10n_cl_transport_problems()
-        self.assertTrue(any("no tiene calle" in t and n == "estricto" for t, n in problemas), problemas)
-
-    def test_guia_emitida_no_cambia(self):
-        entrega = self._entrega(l10n_cl_fleet_vehicle_id=self.camion.id)
-        transporte = entrega.l10n_cl_edi_transport_id
-        entrega.l10n_cl_dte_status = "accepted"
-        otro = self.env["fleet.vehicle"].create({
-            "model_id": self.modelo.id, "license_plate": "SRKW74", "company_id": self.empresa.id,
-        })
-        entrega.l10n_cl_fleet_vehicle_id = otro
-        self.assertEqual(entrega.l10n_cl_edi_transport_id, transporte)
-
-    def test_copia_no_arrastra_transporte(self):
-        entrega = self._entrega(
-            l10n_cl_fleet_vehicle_id=self.camion.id,
-            l10n_cl_edi_departure_date="2026-11-09 12:00:00",
-        )
-        copia = entrega.copy()
-        self.assertFalse(copia.l10n_cl_fleet_vehicle_id)
-        self.assertFalse(copia.l10n_cl_edi_transport_id)
-        self.assertFalse(copia.l10n_cl_edi_departure_date)
-
-    def test_acompanantes_habituales(self):
-        peoneta = self.env["hr.employee"].create({"name": "Peoneta Uno"})
-        self.camion.l10n_cl_crew_employee_ids = peoneta
-        entrega = self._entrega(l10n_cl_fleet_vehicle_id=self.camion.id)
-        self.assertEqual(entrega.l10n_cl_crew_employee_ids, peoneta)
-
-    def test_carga_asignada(self):
-        categoria = self.env["fleet.vehicle.model.category"].create(
-            {"name": "Categoría de prueba de la guía", "weight_capacity": 4900})
-        self.camion.category_id = categoria
-        producto = self.env["product.product"].create(
-            {"name": "Saco 15 kg", "is_storable": True, "weight": 15})
-        self.env["stock.quant"]._update_available_quantity(
-            producto, self.tipo_salida.default_location_src_id, 100)
-        entrega = self._entrega(
-            l10n_cl_fleet_vehicle_id=self.camion.id,
-            move_ids=[(0, 0, {
-                "name": producto.name, "product_id": producto.id, "product_uom_qty": 10,
-                "location_id": self.tipo_salida.default_location_src_id.id,
-                "location_dest_id": self.env.ref("stock.stock_location_customers").id,
-            })],
-        )
-        entrega.action_confirm()
-        entrega.action_assign()
-        self.assertEqual(entrega.state, "assigned")
-        self.assertEqual(entrega.l10n_cl_vehicle_weight_capacity, 4900)
-        self.assertAlmostEqual(entrega.l10n_cl_vehicle_load_weight, 150)
-        self.assertEqual(self.camion.l10n_cl_picking_count, 1)
-
-    def test_lote_toma_el_vehiculo_y_lo_reparte(self):
-        entrega = self._entrega(l10n_cl_fleet_vehicle_id=self.camion.id)
-        otra = self._entrega()
-        lote = self.env["stock.picking.batch"].create({"picking_ids": [(6, 0, (entrega | otra).ids)]})
-        entrega.l10n_cl_fleet_vehicle_id = self.camion
-        self.assertEqual(lote.vehicle_id, self.camion)
-        self.assertEqual(otra.l10n_cl_fleet_vehicle_id, self.camion)
-        self.assertEqual(otra.l10n_cl_edi_driver_id, self.chofer)
-
-    def test_preparar_completa_fechas(self):
-        entrega = self._entrega(l10n_cl_fleet_vehicle_id=self.camion.id)
-        if entrega.country_code != "CL":
-            self.skipTest("La empresa de prueba no es chilena.")
-        entrega._l10n_cl_prepare_transport_data()
-        self.assertTrue(entrega.l10n_cl_edi_departure_date)
-        self.assertEqual(
-            entrega.l10n_cl_edi_arrival_date,
-            entrega._l10n_cl_edi_get_departure_datetime().date(),
-        )
-
-    def test_preparar_bloquea_con_mensaje(self):
-        self.chofer.vat = False
+        self.assertTrue(any("Sin Dato" in t for t, _n in problemas))
         self.empresa.l10n_cl_transport_check = "block"
-        entrega = self._entrega(l10n_cl_fleet_vehicle_id=self.camion.id)
-        if entrega.country_code != "CL":
-            self.skipTest("La empresa de prueba no es chilena.")
-        with self.assertRaisesRegex(UserError, "Ingrese el RUT del chofer"):
-            entrega._l10n_cl_prepare_transport_data()
-
-    def test_solo_avisar_deja_emitir(self):
-        self.chofer.vat = False
-        self.empresa.l10n_cl_transport_check = "warn"
-        entrega = self._entrega(l10n_cl_fleet_vehicle_id=self.camion.id)
-        if entrega.country_code != "CL":
-            self.skipTest("La empresa de prueba no es chilena.")
         self.assertFalse(entrega._l10n_cl_transport_blockers())
-        entrega._l10n_cl_prepare_transport_data()
-        self.assertTrue(entrega.l10n_cl_edi_departure_date)
+
+    def test_aviso_en_pantalla(self):
+        entrega = self._entrega()
+        self.assertFalse(entrega.l10n_cl_transport_issues)
+        entrega.l10n_cl_license_plate = "AB1234"
+        self.assertIn("Antes de emitir", entrega.l10n_cl_transport_issues)
+
+    # ---------------------------------------------------------------- lotes
+
+    def test_lote_pasa_vehiculo_solo_a_flota_propia(self):
+        propia = self._entrega()
+        externa = self._entrega(l10n_cl_transport_mode="external")
+        lote = self.env["stock.picking.batch"].create({"picking_ids": [(6, 0, (propia | externa).ids)]})
+        lote.vehicle_id = self.camion
+        self.assertEqual(propia.l10n_cl_fleet_vehicle_id, self.camion)
+        self.assertEqual(propia.l10n_cl_license_plate, "TSRV15")
+        self.assertFalse(externa.l10n_cl_fleet_vehicle_id)

@@ -1,38 +1,38 @@
 {
     "name": "Guía de Despacho: Transporte (Res. 154)",
-    "version": "18.0.1.0.0",
+    "version": "18.0.2.0.0",
     "category": "Accounting/Localizations/EDI",
-    "summary": "Vehículo, patente, chofer y transportista de la guía de despacho tomados de la "
-               "Flota, en español y revisados antes de emitir.",
+    "summary": "Transporte de la guía de despacho electrónica: flota propia o transporte externo, "
+               "chofer, patente y transportista, revisados antes de emitir.",
     "description": """
 Guía de Despacho: Transporte (Res. 154)
 =======================================
 
-Complementa el módulo de Odoo *Chile - E-Invoicing Delivery Guide (Res. 154)*
-(``l10n_cl_edi_stock_reform``), que exige en la guía de despacho los datos del traslado:
-patente, transportista, chofer y fechas de salida y llegada.
+Complemento del módulo de Odoo *Chile - E-Invoicing Delivery Guide (Res. 154)*
+(``l10n_cl_edi_stock_reform``), del que depende. La Res. Ex. SII N° 154 exige en la guía de
+despacho los datos del traslado: patente, transportista, chofer y fechas de salida y llegada.
 
-- **Desde la Flota.** Cada vehículo de la Flota con patente tiene su transporte para la guía,
-  creado y actualizado solo. Al elegir el vehículo en la entrega se completan la patente, el
-  transportista (la propia empresa), el chofer designado y los acompañantes habituales del
-  vehículo, y se ven su capacidad de carga y lo que ya tiene asignado.
-- **Lotes de entregas.** El vehículo de una entrega pasa a su lote, y el vehículo elegido en
-  un lote pasa a las entregas del lote que no tengan uno.
-- **Couriers.** En el método de envío se indica la empresa que hace el traslado; su nombre y
-  RUT pasan a la guía.
-- **Todo en un solo lugar.** Los datos de transporte se presentan juntos en la entrega, bajo el
-  encabezado, y no en la última pestaña. El RUT del chofer y del transportista se corrigen ahí
-  mismo.
-- **Revisión antes de emitir.** Al crear la guía se revisan el RUT del chofer y del
-  transportista, el chofer de un vehículo propio y la dirección y comuna de destino. Un RUT
-  mal escrito siempre bloquea; lo que falta bloquea o solo se avisa, según se elija en los
-  ajustes de Inventario. Las fechas de salida y llegada, si están vacías, se completan con la
-  fecha y hora de emisión.
-- **Guía impresa en español**, con los datos de transporte del documento tributario.
-- **Desde campos personalizados.** Si la empresa ya registraba el vehículo, los acompañantes o
-  los pesos en campos propios (Studio), un asistente en Flota › Configuración propone a qué campo
-  del módulo corresponde cada uno, copia los datos, cambia vistas, filtros y guía impresa, y
-  archiva las automatizaciones que los usaban. Eliminar los campos viejos es opcional.
+- **Flota propia o transporte externo.** Cada operación indica quién realiza el traslado. Con
+  flota propia, el vehículo se elige de la Flota y el chofer es un empleado de la empresa (su RUT
+  es el número de identificación de su ficha). Con transporte externo, la patente se registra solo
+  en la operación, sin agregar vehículos a la Flota, y el chofer y el transportista son contactos.
+- **Datos independientes.** Cada dato se completa por separado. El vehículo completa su patente
+  y, solo si están vacíos, el chofer y los acompañantes habituales: nunca borra lo ya ingresado.
+- **Alta rápida de contactos.** Los botones «Nuevo» registran un chofer externo o un
+  transportista con su nombre y RUT. El módulo ordena mayúsculas y minúsculas, da formato al RUT,
+  completa el país, el tipo de identificación y el tipo de contribuyente, y asigna las etiquetas
+  «Chofer externo» o «Transportista». Si el RUT ya existe, utiliza ese contacto.
+- **Entregas y traslados.** La sección de transporte está en las entregas, en los traslados
+  internos y en toda operación que emita guía de despacho.
+- **Revisión antes de emitir.** Un RUT mal escrito o una patente de más de 8 caracteres siempre
+  bloquean la emisión; los datos faltantes la bloquean o solo se informan, según lo configurado
+  en Inventario › Ajustes. Las fechas de salida y llegada vacías se completan al emitir.
+- **Guía impresa corporativa.** Los datos de transporte en un recuadro compacto, con los títulos
+  en el color principal de la empresa y los datos en negro.
+- **Lotes de entregas y Flota.** El vehículo de una operación pasa a su lote y viceversa. Cada
+  vehículo indica su chofer habitual, sus acompañantes y su capacidad de carga.
+- **Desde campos personalizados.** Un asistente en Flota › Configuración traspasa al módulo los
+  datos que la empresa registraba en campos propios (Studio).
 
 Desarrollado por **Simplefy by Simpledigital**. https://simpledigital.cl
 """,
@@ -49,12 +49,15 @@ Desarrollado por **Simplefy by Simpledigital**. https://simpledigital.cl
     ],
     "data": [
         "security/ir.model.access.csv",
+        "data/res_partner_category_data.xml",
         "views/l10n_cl_edi_vehicle_views.xml",
         "views/fleet_vehicle_views.xml",
+        "views/hr_employee_views.xml",
         "views/stock_picking_views.xml",
         "views/delivery_carrier_views.xml",
         "views/res_config_settings_views.xml",
         "report/guia_despacho_templates.xml",
+        "wizards/contacto_transporte_views.xml",
         "wizards/migracion_campos_views.xml",
     ],
     "post_init_hook": "post_init_hook",

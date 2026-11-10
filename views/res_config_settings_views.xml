@@ -8,11 +8,11 @@
             <xpath expr="//setting[@id='stock_fleet']" position="after">
                 <setting id="l10n_cl_transport_check" company_dependent="1"
                          string="Guía de despacho: datos de transporte"
-                         help="Qué hacer al emitir una guía a la que le faltan datos de transporte de la Res. 154.">
+                         help="Tratamiento de una guía a la que le faltan datos de transporte exigidos por la Res. Ex. SII N° 154.">
                     <field name="l10n_cl_transport_check" widget="radio"/>
                     <div class="text-muted small mt-1">
-                        Un RUT con dígito verificador malo o una patente de más de 8 caracteres
-                        siempre bloquean la emisión.
+                        Un RUT con dígito verificador incorrecto o una patente de más de 8
+                        caracteres siempre bloquean la emisión.
                     </div>
                 </setting>
             </xpath>
