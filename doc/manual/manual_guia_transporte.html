@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Guía de Despacho: Transporte (Res. 154) · Manual de uso</title>
+<!--
+  Manual de uso del módulo Simplefy «Guía de Despacho: Transporte (Res. 154)». Estándar para
+  cualquier empresa: las capturas son de un Odoo de prueba con datos ficticios.
+  PDF: msedge --headless=new --no-pdf-header-footer --print-to-pdf=Manual-Guia-Despacho-Transporte.pdf manual_guia_transporte.html
+-->
+<style>
+  @page { size: A4; margin: 12mm 13mm 13mm 13mm; }
+  :root { --azul: #1F3A5F; --gris: #5b6573; --linea: #d5dbe3; --suave: #f3f6f9; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Arial, sans-serif; font-size: 8.6pt; line-height: 1.38; color: #1d232b; margin: 0; }
+  .hoja { break-after: page; }
+  .hoja:last-child { break-after: auto; }
+  header.cab { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2.5px solid var(--azul); padding-bottom: 5px; margin-bottom: 9px; }
+  header.cab .marca { font-size: 7.5pt; letter-spacing: .12em; text-transform: uppercase; color: var(--gris); }
+  header.cab h1 { font-size: 16pt; margin: 1px 0 0; color: var(--azul); font-weight: 650; }
+  header.cab .sub { font-size: 8.5pt; color: var(--gris); text-align: right; }
+  h2 { font-size: 10.5pt; color: var(--azul); margin: 10px 0 4px; padding-bottom: 2px; border-bottom: 1px solid var(--linea); }
+  h2 .n { display: inline-block; width: 17px; height: 17px; border-radius: 50%; background: var(--azul); color: #fff; font-size: 8pt; text-align: center; line-height: 17px; margin-right: 6px; vertical-align: 1px; }
+  p { margin: 0 0 5px; }
+  .intro { background: var(--suave); border-left: 3px solid var(--azul); padding: 7px 10px; margin-bottom: 4px; }
+  table.datos { width: 100%; border-collapse: collapse; font-size: 8pt; margin-top: 3px; }
+  table.datos th { background: var(--azul); color: #fff; text-align: left; font-weight: 600; padding: 3px 6px; }
+  table.datos td { padding: 2.5px 6px; border-bottom: 1px solid var(--linea); vertical-align: top; }
+  table.datos tr:nth-child(even) td { background: #fafbfc; }
+  .rojo { color: #a4161a; font-weight: 600; }
+  .ambar { color: #8a5a00; font-weight: 600; }
+  .fila { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
+  .fila.ancha { grid-template-columns: 42% 58%; }
+  figure { margin: 3px 0 0; }
+  figure img { width: 100%; border: 1px solid var(--linea); border-radius: 3px; display: block; }
+  figcaption { font-size: 7.4pt; color: var(--gris); margin-top: 2px; }
+  ol, ul { margin: 2px 0 4px; padding-left: 16px; }
+  li { margin-bottom: 2px; }
+  .nota { font-size: 7.8pt; color: var(--gris); }
+  .chk li { list-style: none; position: relative; }
+  .chk li::before { content: ""; position: absolute; left: -14px; top: 4px; width: 7px; height: 7px; border: 1.3px solid var(--azul); border-radius: 1px; }
+  .hoja { height: 271mm; display: flex; flex-direction: column; }
+  footer.pie { margin-top: auto; display: flex; justify-content: space-between; font-size: 7pt; color: var(--gris); border-top: 1px solid var(--linea); padding-top: 3px; }
+  .centro { width: 88%; margin: 4px auto 0; }
+  b { font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- ======================================================================== HOJA 1 -->
+<section class="hoja">
+  <header class="cab">
+    <div>
+      <div class="marca">Simplefy para Odoo · Inventario y Facturación electrónica</div>
+      <h1>Guía de Despacho: Transporte (Res. 154)</h1>
+    </div>
+    <div class="sub">Manual de uso<br>Entregas y traslados internos</div>
+  </header>
+
+  <div class="intro">
+    <b>Por qué existe este módulo.</b> La Resolución Exenta SII N° 154 de 2025, obligatoria desde el
+    1 de noviembre de 2026, exige que la guía de despacho electrónica informe los datos del traslado:
+    vehículo, transportista, chofer, fechas de salida y llegada, y destino. Odoo trae el módulo
+    <i>Chile - E-Invoicing Delivery Guide (Res. 154)</i>, que agrega esos campos al documento, pero los deja
+    repartidos, en inglés y sin revisión. <b>Simplefy</b> lo complementa: reúne el transporte en una sola
+    sección, lo toma de la Flota y de Empleados, diferencia flota propia de transporte externo, revisa
+    los datos antes de emitir para evitar rechazos del SII y presenta la guía impresa en formato corporativo.
+  </div>
+
+  <h2>Datos que revisa el SII</h2>
+  <table class="datos">
+    <tr><th style="width:27%">Dato en la guía</th><th style="width:43%">De dónde sale</th><th>Si falta o está mal</th></tr>
+    <tr><td>Patente y patente del carro</td><td>Vehículo de la Flota, o escrita en la operación (transporte externo)</td><td class="ambar">Se informa «Sin Dato»</td></tr>
+    <tr><td>Transportista y su RUT</td><td>La propia empresa (flota propia) o el contacto transportista</td><td class="ambar">Aviso; bloqueo opcional</td></tr>
+    <tr><td>Chofer y su RUT</td><td>Empleado (RUT de su ficha) o contacto «Chofer externo»</td><td class="ambar">Aviso; bloqueo opcional</td></tr>
+    <tr><td>Fecha y hora de salida, fecha de llegada</td><td>Se completan solas al emitir, si se dejan vacías</td><td>Siempre se informan</td></tr>
+    <tr><td>RUT y razón social del destinatario</td><td>La empresa del cliente, aunque se despache a una sucursal</td><td class="rojo">Bloquea: el SII la rechaza</td></tr>
+    <tr><td>Comuna de destino</td><td>Dirección de entrega del cliente</td><td class="rojo">Bloquea: el SII la rechaza</td></tr>
+    <tr><td>RUT con dígito verificador correcto</td><td>Chofer, transportista y destinatario</td><td class="rojo">Bloquea: el SII la rechaza</td></tr>
+    <tr><td>Descuentos de la venta</td><td>Van como descuento global; los totales cuadran con la orden de venta</td><td>Automático</td></tr>
+  </table>
+  <p class="nota" style="margin-top:3px">Lo que el SII rechaza siempre bloquea la emisión. Lo demás se informa en la operación, o bloquea si la empresa lo elige en Inventario › Ajustes.</p>
+
+  <div class="fila">
+    <div>
+      <h2><span class="n">1</span>Validar la entrega o el traslado</h2>
+      <p>La sección <b>Transporte</b> aparece cuando la operación está <b>Hecha</b> (validada), que es el
+         momento de emitir la guía. Funciona igual en entregas a clientes, traslados internos y cualquier
+         operación que emita guía de despacho.</p>
+    </div>
+    <div>
+      <h2><span class="n">2</span>Completar el transporte</h2>
+      <p><b>Flota propia.</b> Al elegir el vehículo se completan la patente, el transportista (la empresa) y,
+         si están vacíos, el chofer y los acompañantes habituales. Cada casilla es independiente: elegir el
+         vehículo <b>no borra</b> lo ya escrito. El RUT del chofer viene de su ficha de empleado.</p>
+    </div>
+  </div>
+  <figure class="centro">
+    <img src="img/1_entrega_flota_propia.png" alt="Entrega validada con flota propia">
+    <figcaption>Entrega validada con flota propia: vehículo, patente, transportista, chofer y RUT completos.</figcaption>
+  </figure>
+  <footer class="pie">
+  <span>Simplefy · Guía de Despacho: Transporte (Res. 154) · Manual de uso</span>
+  <span>Desarrollado por Simplefy by Simpledigital · simpledigital.cl</span>
+  </footer>
+</section>
+
+<!-- ======================================================================== HOJA 2 -->
+<section class="hoja">
+  <h2 style="margin-top:0"><span class="n">3</span>Transporte externo: courier o transportista contratado</h2>
+  <div class="fila">
+    <p>Con <b>Transporte externo</b> se eligen el transportista y su chofer, y la patente se escribe en la
+       operación. Los vehículos de terceros <b>no se agregan a la Flota</b>. El recuadro amarillo indica lo
+       que falta antes de emitir.</p>
+    <p>El botón <b>+ Nuevo</b> registra un chofer o un transportista con solo su <b>nombre y RUT</b>. El módulo
+       ordena mayúsculas y minúsculas, da formato al RUT, asigna la etiqueta y, si el RUT ya existe, usa ese
+       contacto en vez de crear uno repetido.</p>
+  </div>
+  <figure style="width: 90%; margin: 3px auto 0;"><img src="img/2_traslado_externo.png" alt="Traslado interno con transporte externo">
+    <figcaption>Traslado interno con transporte externo y el aviso de lo que falta.</figcaption></figure>
+  <figure style="width: 62%; margin: 5px auto 0;"><img src="img/3_nuevo_chofer.png" alt="Alta rápida de un chofer externo">
+    <figcaption>Se escribe «PEDRO pablo DE la cruz» y se registra «Pedro Pablo de la Cruz».</figcaption></figure>
+
+  <h2><span class="n">4</span>Emitir e imprimir la guía</h2>
+  <div class="fila" style="grid-template-columns: 33% 67%;">
+    <div>
+      <p>Con <b>Crear guía de despacho</b>, el módulo revisa los datos, completa salida y llegada si están
+         vacías y Odoo envía el documento al SII.</p>
+      <p>La guía impresa muestra un recuadro <b>Datos del transporte</b>, con los títulos en el color
+         principal de la empresa (Ajustes › Diseño del documento) y los datos en negro.</p>
+      <p class="nota">Con la guía ya emitida los datos de transporte quedan fijos, igual que el XML enviado al SII.</p>
+    </div>
+    <figure><img src="img/4_guia_impresa.png" alt="Guía impresa con los datos del transporte">
+      <figcaption>Guía impresa: recuadro de datos del transporte.</figcaption></figure>
+  </div>
+
+  <h2>Configuración inicial</h2>
+  <div class="fila">
+    <ul class="chk">
+      <li><b>Empleados:</b> marcar <i>Chofer de la empresa</i> y registrar el RUT en <i>Nº de identificación</i>.
+          Al instalar se marcan solos los cargos de chofer o conductor.</li>
+      <li><b>Flota:</b> patente de cada vehículo, su <i>Chofer habitual</i> y sus <i>Acompañantes habituales</i>.</li>
+      <li><b>Métodos de envío:</b> en un courier, indicar el <i>Transportista para la guía</i>; sus despachos
+          se emiten como transporte externo.</li>
+    </ul>
+    <ul class="chk">
+      <li><b>Inventario › Ajustes:</b> <i>Informar y emitir</i> (por defecto) o <i>Bloquear la emisión</i>
+          cuando falten datos de transporte.</li>
+      <li><b>Productos de descuento:</b> deben ser de tipo <i>Servicio</i>, para que no pasen por bodega.</li>
+      <li><b>Campos propios (Studio):</b> Flota › Configuración › <i>Traer datos de campos personalizados</i>
+          traspasa vehículo, acompañantes y pesos registrados antes.</li>
+    </ul>
+  </div>
+  <p class="nota" style="margin-top:4px">Requiere Odoo Enterprise con la localización chilena y el módulo
+     <i>Chile - E-Invoicing Delivery Guide (Res. 154)</i>, que se instala junto con este módulo.</p>
+  <footer class="pie">
+  <span>Simplefy · Guía de Despacho: Transporte (Res. 154) · Manual de uso</span>
+  <span>Desarrollado por Simplefy by Simpledigital · simpledigital.cl</span>
+  </footer>
+</section>
+</body>
+</html>

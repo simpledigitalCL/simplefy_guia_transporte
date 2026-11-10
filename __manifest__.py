@@ -1,6 +1,6 @@
 {
     "name": "Guía de Despacho: Transporte (Res. 154)",
-    "version": "18.0.2.1.0",
+    "version": "18.0.2.1.1",
     "category": "Accounting/Localizations/EDI",
     "summary": "Transporte de la guía de despacho electrónica: flota propia o transporte externo, "
                "chofer, patente y transportista, revisados antes de emitir.",

@@ -115,22 +115,31 @@
                             </td>
                         </tr>
                         <tr>
-                            <td t-attf-style="color: #{sd_color}; font-weight: bold; padding: 2px 4px 3px 8px; white-space: nowrap;">Chofer</td>
-                            <td style="color: #000; padding: 2px 4px 3px 4px;">
+                            <td t-attf-style="color: #{sd_color}; font-weight: bold; padding: 2px 4px 2px 8px; white-space: nowrap;">Chofer</td>
+                            <td style="color: #000; padding: 2px 4px;">
                                 <span t-out="sd_chofer['name'] or sd_sin_dato"/>
                             </td>
-                            <td t-attf-style="color: #{sd_color}; font-weight: bold; padding: 2px 4px 3px 4px; white-space: nowrap;">RUT chofer</td>
-                            <td style="color: #000; padding: 2px 4px 3px 4px;">
+                            <td t-attf-style="color: #{sd_color}; font-weight: bold; padding: 2px 4px; white-space: nowrap;">RUT chofer</td>
+                            <td style="color: #000; padding: 2px 4px;">
                                 <span t-out="o._l10n_cl_rut_impreso(sd_chofer['vat']) or sd_sin_dato"/>
                             </td>
-                            <td t-attf-style="color: #{sd_color}; font-weight: bold; padding: 2px 4px 3px 4px; white-space: nowrap;">Salida</td>
-                            <td style="color: #000; padding: 2px 8px 3px 4px;">
+                            <td t-attf-style="color: #{sd_color}; font-weight: bold; padding: 2px 4px; white-space: nowrap;">Salida</td>
+                            <td style="color: #000; padding: 2px 8px 2px 4px; white-space: nowrap;">
                                 <span t-if="o.l10n_cl_edi_departure_date"
                                       t-out="o._l10n_cl_edi_get_departure_datetime().strftime('%d-%m-%Y %H:%M')"/>
                                 <span t-else="" t-out="sd_sin_dato"/>
-                                <t t-if="o.l10n_cl_edi_arrival_date">
-                                    · llegada <span t-out="o.l10n_cl_edi_arrival_date.strftime('%d-%m-%Y')"/>
-                                </t>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td t-attf-style="color: #{sd_color}; font-weight: bold; padding: 2px 4px 3px 8px; white-space: nowrap;">Destino</td>
+                            <td colspan="3" style="color: #000; padding: 2px 4px 3px 4px;">
+                                <span t-out="o._l10n_cl_get_comuna_recep() or sd_sin_dato"/>
+                            </td>
+                            <td t-attf-style="color: #{sd_color}; font-weight: bold; padding: 2px 4px 3px 4px; white-space: nowrap;">Llegada</td>
+                            <td style="color: #000; padding: 2px 8px 3px 4px; white-space: nowrap;">
+                                <span t-if="o.l10n_cl_edi_arrival_date"
+                                      t-out="o.l10n_cl_edi_arrival_date.strftime('%d-%m-%Y')"/>
+                                <span t-else="" t-out="sd_sin_dato"/>
                             </td>
                         </tr>
                     </tbody>
