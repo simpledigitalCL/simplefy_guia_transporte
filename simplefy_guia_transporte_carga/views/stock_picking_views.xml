@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Vehículo y carga en las entregas y traslados con flota propia.
+        - Antes de validar: el bloque «Vehículo y carga», para asignar el vehículo al preparar.
+        - Después de validar: la carga del día dentro de la sección de transporte de la guía.
+        Es el mismo campo de vehículo de la guía: se elige una sola vez.
+    -->
+    <record id="view_picking_form_guia_carga" model="ir.ui.view">
+        <field name="name">stock.picking.form.guia.carga</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="simplefy_guia_transporte.view_picking_form_guia_transporte"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='l10n_cl_transporte']" position="before">
+                <div name="l10n_cl_carga" class="o_l10n_cl_carga mt-3 mb-3"
+                     invisible="state in ('done', 'cancel') or country_code != 'CL' or picking_type_code not in ('outgoing', 'internal')">
+                    <field name="l10n_cl_day_load_status" invisible="1"/>
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 border-bottom pb-1 mb-2">
+                        <span class="o_form_label fs-5 fw-bold">Vehículo y carga</span>
+                        <field name="l10n_cl_transport_mode" widget="radio" nolabel="1"
+                               options="{'horizontal': true}" class="mb-0"/>
+                    </div>
+                    <div class="alert alert-danger py-2 mb-2" role="alert" invisible="l10n_cl_day_load_status != 'overload'">
+                        <field name="l10n_cl_day_load_message" nolabel="1" readonly="1"/>
+                    </div>
+                    <div class="alert alert-info py-2 mb-2" role="status" invisible="l10n_cl_day_load_status != 'ready'">
+                        <field name="l10n_cl_day_load_message" nolabel="1" readonly="1"/>
+                    </div>
+                    <div class="alert alert-success py-2 mb-2" role="status" invisible="l10n_cl_day_load_status != 'delivered'">
+                        <field name="l10n_cl_day_load_message" nolabel="1" readonly="1"/>
+                    </div>
+                    <group invisible="l10n_cl_transport_mode != 'own'" class="mt-0">
+                        <group>
+                            <field name="l10n_cl_fleet_vehicle_id" options="{'no_create': True}"
+                                   placeholder="Seleccione un vehículo de la Flota"/>
+                            <field name="l10n_cl_crew_employee_ids" widget="many2many_tags"
+                                   options="{'no_create': True}" placeholder="Peonetas"/>
+                        </group>
+                        <group invisible="not l10n_cl_fleet_vehicle_id">
+                            <field name="l10n_cl_load_date" string="Día de salida" readonly="1"/>
+                            <label for="l10n_cl_day_load_weight"/>
+                            <div class="d-flex flex-wrap align-items-baseline gap-1">
+                                <field name="l10n_cl_day_load_weight" nolabel="1" class="oe_inline w-auto fw-bold"
+                                       digits="[16, 0]"
+                                       decoration-danger="l10n_cl_day_load_status == 'overload'"/>
+                                <span invisible="not l10n_cl_vehicle_weight_capacity">de</span>
+                                <field name="l10n_cl_vehicle_weight_capacity" nolabel="1" class="oe_inline w-auto"
+                                       digits="[16, 0]" invisible="not l10n_cl_vehicle_weight_capacity"/>
+                                <span>kg</span>
+                                <button name="action_l10n_cl_view_day_loads" type="object"
+                                        class="btn btn-link p-0 ms-2 text-nowrap" icon="fa-truck">
+                                    <field name="l10n_cl_day_load_count" class="oe_inline"/>
+                                    <span> operaciones</span>
+                                </button>
+                            </div>
+                            <label for="weight" string="Esta operación"/>
+                            <div class="d-flex align-items-baseline gap-1">
+                                <field name="weight" nolabel="1" class="oe_inline w-auto" digits="[16, 0]" readonly="1"/>
+                                <span>kg</span>
+                            </div>
+                        </group>
+                    </group>
+                    <p class="text-muted mb-0" invisible="l10n_cl_transport_mode != 'external'">
+                        Con transporte externo, el transportista, la patente y el chofer se registran al
+                        validar la operación, en la sección de transporte de la guía.
+                    </p>
+                    <div class="text-muted small text-end">
+                        Guía de Despacho: Carga del Vehículo · by
+                        <a href="https://simpledigital.cl" target="_blank" rel="noopener noreferrer">Simpledigital</a>
+                    </div>
+                </div>
+            </xpath>
+
+            <!-- Con la operación validada: la carga del día junto al vehículo de la guía. -->
+            <xpath expr="//div[@name='l10n_cl_transporte']//field[@name='l10n_cl_fleet_vehicle_id']" position="after">
+                <label for="l10n_cl_day_load_weight"
+                       invisible="l10n_cl_transport_mode != 'own' or not l10n_cl_fleet_vehicle_id"/>
+                <div class="d-flex align-items-baseline gap-1"
+                     invisible="l10n_cl_transport_mode != 'own' or not l10n_cl_fleet_vehicle_id">
+                    <field name="l10n_cl_day_load_weight" nolabel="1" class="oe_inline w-auto" digits="[16, 0]"
+                           decoration-danger="l10n_cl_day_load_status == 'overload'"/>
+                    <span invisible="not l10n_cl_vehicle_weight_capacity">de</span>
+                    <field name="l10n_cl_vehicle_weight_capacity" nolabel="1" class="oe_inline w-auto"
+                           digits="[16, 0]" invisible="not l10n_cl_vehicle_weight_capacity"/>
+                    <span>kg</span>
+                </div>
+            </xpath>
+            <xpath expr="//div[@name='l10n_cl_transporte']//field[@name='l10n_cl_transport_issues']/.." position="after">
+                <div class="alert alert-danger py-2 mb-2" role="alert"
+                     invisible="l10n_cl_transport_mode != 'own' or l10n_cl_day_load_status != 'overload'">
+                    <field name="l10n_cl_day_load_message" nolabel="1" readonly="1"/>
+                </div>
+                <div class="alert alert-info py-2 mb-2" role="status"
+                     invisible="l10n_cl_transport_mode != 'own' or l10n_cl_day_load_status != 'ready'">
+                    <field name="l10n_cl_day_load_message" nolabel="1" readonly="1"/>
+                </div>
+                <div class="alert alert-success py-2 mb-2" role="status"
+                     invisible="l10n_cl_transport_mode != 'own' or l10n_cl_day_load_status != 'delivered'">
+                    <field name="l10n_cl_day_load_message" nolabel="1" readonly="1"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_picking_tree_guia_carga" model="ir.ui.view">
+        <field name="name">stock.picking.list.guia.carga</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.vpicktree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='scheduled_date']" position="after">
+                <field name="l10n_cl_fleet_vehicle_id" optional="hide"/>
+                <field name="l10n_cl_load_date" optional="hide"/>
+                <field name="l10n_cl_load_until" optional="hide"/>
+                <field name="weight" optional="hide" sum="Peso total"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

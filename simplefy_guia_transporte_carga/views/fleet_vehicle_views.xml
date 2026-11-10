@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="fleet_vehicle_view_form_guia_carga" model="ir.ui.view">
+        <field name="name">fleet.vehicle.form.guia.carga</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="inherit_id" ref="simplefy_guia_transporte.fleet_vehicle_view_form_guia_transporte"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_l10n_cl_view_today_loads" type="object" class="oe_stat_button" icon="fa-balance-scale">
+                    <field name="l10n_cl_today_load_count" widget="statinfo" string="Carga de hoy"/>
+                </button>
+            </xpath>
+            <xpath expr="//field[@name='l10n_cl_weight_capacity']" position="after">
+                <field name="l10n_cl_today_load_status" invisible="1"/>
+                <label for="l10n_cl_today_load_weight"/>
+                <div class="d-flex align-items-baseline gap-1">
+                    <field name="l10n_cl_today_load_weight" nolabel="1" class="oe_inline w-auto" digits="[16, 0]"
+                           decoration-danger="l10n_cl_today_load_status == 'overload'"/>
+                    <span invisible="not l10n_cl_weight_capacity">de</span>
+                    <field name="l10n_cl_weight_capacity" nolabel="1" class="oe_inline w-auto" digits="[16, 0]"
+                           invisible="not l10n_cl_weight_capacity"/>
+                    <span>kg</span>
+                </div>
+                <field name="l10n_cl_today_load_message" nolabel="1" colspan="2" readonly="1"
+                       invisible="not l10n_cl_today_load_message"
+                       decoration-danger="l10n_cl_today_load_status == 'overload'"
+                       decoration-success="l10n_cl_today_load_status in ('ready', 'delivered')"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
