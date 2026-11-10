@@ -33,7 +33,7 @@ EN_LA_SECCION = {
     "l10n_cl_fleet_vehicle_id", "l10n_cl_crew_employee_ids",
     "l10n_cl_vehicle_weight_capacity", "l10n_cl_vehicle_load_weight",
 }
-SOLO_FUERA_DE_LA_SECCION = "country_code == 'CL' and (picking_type_code in ('outgoing', 'internal') or l10n_cl_dte_status)"
+SOLO_FUERA_DE_LA_SECCION = "state == 'done' and country_code == 'CL' and (picking_type_code in ('outgoing', 'internal') or l10n_cl_dte_status)"
 
 
 def _renombrar(texto, renombres):

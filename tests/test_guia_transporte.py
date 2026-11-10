@@ -46,6 +46,21 @@ class TestGuiaTransporte(TransactionCase):
                                  or self.env.ref("stock.stock_location_customers")).id,
         }, **vals))
 
+    def _validada(self, tipo=None, **vals):
+        """Una operación validada: la sección de transporte aparece recién entonces."""
+        producto = self.env["product.product"].create({"name": "Saco 15 kg", "type": "consu"})
+        entrega = self._entrega(tipo, **vals)
+        self.env["stock.move"].create({
+            "name": producto.name, "product_id": producto.id, "product_uom_qty": 2,
+            "picking_id": entrega.id, "location_id": entrega.location_id.id,
+            "location_dest_id": entrega.location_dest_id.id,
+        })
+        entrega.action_confirm()
+        entrega.move_ids.write({"quantity": 2, "picked": True})
+        entrega.button_validate()
+        self.assertEqual(entrega.state, "done")
+        return entrega
+
     def _externo(self, nombre="Transportes Sur SpA", rut="77806647-5"):
         return self.env["res.partner"].create({
             "name": nombre, "vat": rut, "is_company": True,
@@ -90,7 +105,7 @@ class TestGuiaTransporte(TransactionCase):
         """Aldo: «si se selecciona un transporte con las celdas rellenas, estas se borran»."""
         sin_chofer = self.env["fleet.vehicle"].create({
             "model_id": self.modelo.id, "license_plate": "HLHB-31", "company_id": self.empresa.id})
-        with Form(self._entrega()) as form:
+        with Form(self._validada()) as form:
             form.l10n_cl_driver_employee_id = self.chofer
             form.l10n_cl_trailer_license_plate = "jj1122"
             form.l10n_cl_fleet_vehicle_id = sin_chofer
@@ -108,7 +123,7 @@ class TestGuiaTransporte(TransactionCase):
         self.assertEqual(entrega.l10n_cl_transport_vat, "76.086.428-5")
 
     def test_pasar_a_externo_quita_el_vehiculo_propio(self):
-        with Form(self._entrega()) as form:
+        with Form(self._validada()) as form:
             form.l10n_cl_fleet_vehicle_id = self.camion
             form.l10n_cl_trailer_license_plate = "JJ1122"
             form.l10n_cl_transport_mode = "external"
@@ -152,12 +167,12 @@ class TestGuiaTransporte(TransactionCase):
         entrega = self._entrega()
         accion = entrega.action_l10n_cl_new_driver()
         asistente = self.env[accion["res_model"]].with_context(accion["context"]).create({
-            "name": "  MARÍA josé DE LA cruz ", "vat": "21.333.444-1"})
+            "name": "  MARÍA josé DE LA cruz ", "vat": "22.444.777-9"})
         self.assertEqual(asistente.preview_name, "María José de la Cruz")
         asistente.action_confirm()
         chofer = entrega.l10n_cl_edi_driver_id
         self.assertEqual(chofer.name, "María José de la Cruz")
-        self.assertEqual(chofer.vat, "21333444-1")
+        self.assertEqual(chofer.vat, "22444777-9")
         self.assertFalse(chofer.is_company)
         self.assertIn(self.etiqueta_chofer, chofer.category_id)
         self.assertEqual(entrega.l10n_cl_transport_mode, "external")
@@ -166,7 +181,7 @@ class TestGuiaTransporte(TransactionCase):
         # El mismo RUT, escrito de otra forma, no crea un contacto duplicado.
         otra = self._entrega()
         asistente = self.env["l10n_cl.transport.contact.wizard"].create({
-            "picking_id": otra.id, "contact_type": "driver", "name": "maria cruz", "vat": "213334441"})
+            "picking_id": otra.id, "contact_type": "driver", "name": "maria cruz", "vat": "224447779"})
         self.assertEqual(asistente.existing_partner_id, chofer)
         asistente.action_confirm()
         self.assertEqual(otra.l10n_cl_edi_driver_id, chofer)
@@ -231,11 +246,15 @@ class TestGuiaTransporte(TransactionCase):
         self.empresa.l10n_cl_transport_check = "block"
         self.assertFalse(entrega._l10n_cl_transport_blockers())
 
-    def test_aviso_en_pantalla(self):
-        entrega = self._entrega()
-        self.assertFalse(entrega.l10n_cl_transport_issues)
-        entrega.l10n_cl_license_plate = "AB1234"
-        self.assertIn("Antes de emitir", entrega.l10n_cl_transport_issues)
+    def test_aviso_solo_con_la_operacion_validada(self):
+        pendiente = self._entrega(l10n_cl_license_plate="AB1234")
+        self.assertFalse(pendiente.l10n_cl_transport_issues, "antes de validar no se muestra")
+        validada = self._validada(l10n_cl_license_plate="AB1234")
+        self.assertIn("Antes de emitir", validada.l10n_cl_transport_issues)
+
+    def test_seccion_solo_con_la_operacion_validada(self):
+        arch = self.env["stock.picking"].get_view(view_type="form")["arch"]
+        self.assertIn("state != 'done' or country_code != 'CL'", arch)
 
     # ---------------------------------------------------------------- lotes
 

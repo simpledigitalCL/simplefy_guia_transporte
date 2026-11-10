@@ -1,6 +1,6 @@
 {
     "name": "Guía de Despacho: Transporte (Res. 154)",
-    "version": "18.0.2.0.0",
+    "version": "18.0.2.0.1",
     "category": "Accounting/Localizations/EDI",
     "summary": "Transporte de la guía de despacho electrónica: flota propia o transporte externo, "
                "chofer, patente y transportista, revisados antes de emitir.",
@@ -23,7 +23,8 @@ despacho los datos del traslado: patente, transportista, chofer y fechas de sali
   completa el país, el tipo de identificación y el tipo de contribuyente, y asigna las etiquetas
   «Chofer externo» o «Transportista». Si el RUT ya existe, utiliza ese contacto.
 - **Entregas y traslados.** La sección de transporte está en las entregas, en los traslados
-  internos y en toda operación que emita guía de despacho.
+  internos y en toda operación que emita guía de despacho, y aparece una vez validada la
+  operación, que es cuando se emite la guía.
 - **Revisión antes de emitir.** Un RUT mal escrito o una patente de más de 8 caracteres siempre
   bloquean la emisión; los datos faltantes la bloquean o solo se informan, según lo configurado
   en Inventario › Ajustes. Las fechas de salida y llegada vacías se completan al emitir.

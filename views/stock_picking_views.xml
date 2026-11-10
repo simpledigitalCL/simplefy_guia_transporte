@@ -2,7 +2,8 @@
 <odoo>
     <!--
         Los datos de transporte de la Res. 154 juntos, bajo el encabezado de la operación (entregas,
-        traslados internos y cualquier otra que emita guía de despacho).
+        traslados internos y cualquier otra que emita guía de despacho). La sección aparece cuando
+        la operación ya está validada: es el momento de emitir la guía.
 
         Odoo los repartía entre el encabezado (salida y llegada) y la última pestaña (transporte y
         chofer). Se sacan de ahí y se presentan en una sola sección, fuera de los grupos del
@@ -22,7 +23,7 @@
 
             <xpath expr="//field[@name='picking_properties']" position="before">
                 <div name="l10n_cl_transporte" class="o_l10n_cl_transporte mt-3 mb-3"
-                     invisible="country_code != 'CL' or (picking_type_code not in ('outgoing', 'internal') and not l10n_cl_dte_status)">
+                     invisible="state != 'done' or country_code != 'CL' or (picking_type_code not in ('outgoing', 'internal') and not l10n_cl_dte_status)">
                     <field name="l10n_cl_transport_locked" invisible="1"/>
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 border-bottom pb-1 mb-2">
                         <span class="o_form_label fs-5 fw-bold">Transporte</span>
@@ -41,18 +42,6 @@
                                    options="{'no_create': True}"
                                    placeholder="Seleccione un vehículo de la Flota"
                                    readonly="l10n_cl_transport_locked"/>
-                            <label for="l10n_cl_vehicle_load_weight" string="Carga"
-                                   invisible="l10n_cl_transport_mode != 'own' or not l10n_cl_fleet_vehicle_id"/>
-                            <div class="d-flex align-items-baseline gap-1"
-                                 invisible="l10n_cl_transport_mode != 'own' or not l10n_cl_fleet_vehicle_id">
-                                <field name="l10n_cl_vehicle_load_weight" nolabel="1" class="oe_inline w-auto"
-                                       digits="[16, 0]"
-                                       decoration-danger="l10n_cl_vehicle_weight_capacity and l10n_cl_vehicle_load_weight &gt; l10n_cl_vehicle_weight_capacity"/>
-                                <span invisible="not l10n_cl_vehicle_weight_capacity">de</span>
-                                <field name="l10n_cl_vehicle_weight_capacity" nolabel="1" class="oe_inline w-auto"
-                                       digits="[16, 0]" invisible="not l10n_cl_vehicle_weight_capacity"/>
-                                <span>kg asignados</span>
-                            </div>
                             <field name="l10n_cl_own_transport_partner_id" string="Transportista"
                                    invisible="l10n_cl_transport_mode != 'own'"
                                    options="{'no_open': True}"/>

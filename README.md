@@ -11,7 +11,7 @@ Desarrollado por **Simplefy by Simpledigital** — https://simpledigital.cl
 
 | Dónde | Qué |
 |---|---|
-| Entregas, traslados internos y toda operación que emita guía | Sección «Transporte» bajo el encabezado, con el tipo de transporte: **Flota propia** o **Transporte externo**. Odoo dejaba salida y llegada en el encabezado y transporte y chofer en la última pestaña, y solo en entregas. |
+| Entregas, traslados internos y toda operación que emita guía | Sección «Transporte» bajo el encabezado, **una vez validada la operación**, con el tipo de transporte: **Flota propia** o **Transporte externo**. Odoo dejaba salida y llegada en el encabezado y transporte y chofer en la última pestaña, y solo en entregas. |
 | Flota propia | Vehículo de la Flota (con su carga asignada y capacidad), transportista = la empresa dueña del vehículo, chofer = **empleado** marcado como «Chofer de la empresa» (su RUT es el Nº de identificación de su ficha), acompañantes. |
 | Transporte externo | Transportista y chofer son **contactos** con las etiquetas «Transportista» y «Chofer externo». La patente y el carro se escriben en la operación: no se agregan vehículos a la Flota. Botones «Nuevo» para registrar un chofer o un transportista con solo nombre y RUT. |
 | Alta rápida | Ordena mayúsculas y minúsculas («JUAN carlos DE la fuente» → «Juan Carlos de la Fuente»; «TRANSPORTES SUR SPA» → «Transportes Sur SpA»), guarda el RUT en el formato de la localización, completa país, tipo de identificación (RUT), tipo de contribuyente y etiqueta. Si el RUT ya existe, usa ese contacto (no duplica). |

@@ -376,19 +376,11 @@ class StockPicking(models.Model):
     )
     def _compute_l10n_cl_transport_issues(self):
         for picking in self:
-            # El aviso aparece cuando la operación ya está lista para su guía, o cuando alguien
-            # empezó a completar el transporte: no en cada traslado que nunca llevará guía.
+            # El aviso aparece con la operación validada, que es cuando se emite la guía.
             avisar = (
-                picking._l10n_cl_transport_applies()
+                picking.state == "done"
+                and picking._l10n_cl_transport_applies()
                 and not picking._l10n_cl_transport_locked()
-                and (
-                    picking.state == "done"
-                    or picking.l10n_cl_fleet_vehicle_id
-                    or picking.l10n_cl_license_plate
-                    or picking.l10n_cl_driver_employee_id
-                    or picking.l10n_cl_edi_driver_id
-                    or picking.l10n_cl_transport_partner_id
-                )
             )
             problemas = picking._l10n_cl_transport_problems() if avisar else []
             picking.l10n_cl_transport_issues = (
