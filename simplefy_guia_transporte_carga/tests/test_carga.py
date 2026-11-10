@@ -38,7 +38,7 @@ class TestCargaVehiculo(TransactionCase):
             "scheduled_date": ahora + timedelta(days=dias_salida),
             "l10n_cl_fleet_vehicle_id": self.camion.id,
             "move_ids": [(0, 0, {
-                "name": self.saco.name, "product_id": self.saco.id, "product_uom_qty": sacos,
+                "product_id": self.saco.id, "product_uom_qty": sacos,
                 "location_id": self.tipo.default_location_src_id.id,
                 "location_dest_id": self.env.ref("stock.stock_location_customers").id})],
         }, **vals))

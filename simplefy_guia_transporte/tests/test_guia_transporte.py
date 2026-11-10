@@ -52,7 +52,7 @@ class TestGuiaTransporte(TransactionCase):
         producto = self.env["product.product"].create({"name": "Saco 15 kg", "type": "consu"})
         entrega = self._entrega(tipo, **vals)
         self.env["stock.move"].create({
-            "name": producto.name, "product_id": producto.id, "product_uom_qty": 2,
+            "product_id": producto.id, "product_uom_qty": 2,
             "picking_id": entrega.id, "location_id": entrega.location_id.id,
             "location_dest_id": entrega.location_dest_id.id,
         })
@@ -313,9 +313,9 @@ class TestGuiaDescuentos(TransactionCase):
             "partner_shipping_id": (destino or self.cliente).id,
             "order_line": [
                 (0, 0, {"product_id": self.saco.id, "product_uom_qty": 3, "price_unit": 10000,
-                        "tax_id": [(6, 0, self.iva.ids)]}),
+                        "tax_ids": [(6, 0, self.iva.ids)]}),
                 (0, 0, {"product_id": producto_descuento.id, "product_uom_qty": 1, "price_unit": -3000,
-                        "tax_id": [(6, 0, self.iva.ids)]}),
+                        "tax_ids": [(6, 0, self.iva.ids)]}),
             ],
         })
         venta.action_confirm()
@@ -366,7 +366,7 @@ class TestGuiaDescuentos(TransactionCase):
         venta = self.env["sale.order"].create({
             "partner_id": self.cliente.id,
             "order_line": [(0, 0, {"product_id": self.saco.id, "product_uom_qty": 2, "price_unit": 10000,
-                                   "tax_id": [(6, 0, self.iva.ids)]})],
+                                   "tax_ids": [(6, 0, self.iva.ids)]})],
         })
         venta.action_confirm()
         totales, _r, _l = self._despachar(venta)._l10n_cl_get_tax_amounts()

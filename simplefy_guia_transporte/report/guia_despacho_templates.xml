@@ -42,7 +42,7 @@
         <xpath expr="//t[@t-as='line']" position="attributes">
             <attribute name="t-foreach">picking._l10n_cl_dte_moves()</attribute>
         </xpath>
-        <xpath expr="//t[@t-if='picking.sale_id.client_order_ref']" position="before">
+        <xpath expr="//t[@t-if='picking.l10n_cl_reference_ids']" position="before">
             <t t-foreach="amounts.get('l10n_cl_global_discounts', [])" t-as="descuento_global">
                 <DscRcgGlobal>
                     <NroLinDR t-out="descuento_global_index + 1"/>

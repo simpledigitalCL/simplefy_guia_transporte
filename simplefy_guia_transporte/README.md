@@ -1,6 +1,6 @@
 # Guía de Despacho: Transporte (Res. 154)
 
-Módulo de Odoo 18 que complementa el de Odoo **Chile - E-Invoicing Delivery Guide (Res. 154)**
+Módulo de Odoo 19 que complementa el de Odoo **Chile - E-Invoicing Delivery Guide (Res. 154)**
 (`l10n_cl_edi_stock_reform`, Enterprise). Depende de él y no reemplaza su código: Odoo sigue
 armando y enviando el XML al SII; este módulo ordena cómo se registran los datos de transporte,
 los revisa antes de emitir y presenta la guía impresa.

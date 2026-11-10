@@ -1,6 +1,6 @@
 # Guía de Despacho · Simplefy para Odoo
 
-Módulos de Odoo 18 para la guía de despacho electrónica chilena (Res. Ex. SII N° 154). Desarrollados
+Módulos de Odoo 19 para la guía de despacho electrónica chilena (Res. Ex. SII N° 154). Desarrollados
 por **Simplefy by Simpledigital** — https://simpledigital.cl
 
 | Módulo | Qué hace | Instalación |
@@ -10,5 +10,7 @@ por **Simplefy by Simpledigital** — https://simpledigital.cl
 
 Manual de uso: [`simplefy_guia_transporte/doc/manual`](simplefy_guia_transporte/doc/manual).
 Íconos: `python doc/icono.py` (Pillow) los genera en `static/description/icon.png` de cada módulo.
+
+Ramas: `main` y `19` (Odoo 19), `18.0` (Odoo 18).
 
 En Odoo.sh el repo entra como submódulo; cada carpeta es un módulo y aparece por separado en Aplicaciones.

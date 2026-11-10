@@ -1,6 +1,6 @@
 {
     "name": "Guía de Despacho: Carga del Vehículo",
-    "version": "18.0.1.0.0",
+    "version": "19.0.1.0.0",
     "category": "Inventory/Delivery",
     "summary": "Planificación de la carga de los vehículos de la flota propia: peso por día, "
                "sobrecarga, carga lista y carga entregada.",
